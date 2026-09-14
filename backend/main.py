@@ -106,4 +106,3 @@ def delete_lesson(
 
     db.delete(db_lesson)
     db.commit()
-    return None
