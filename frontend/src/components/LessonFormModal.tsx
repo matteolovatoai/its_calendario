@@ -42,7 +42,7 @@ function CreatableCombobox({
           {selectedItem ? selectedItem.name : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </PopoverTrigger>
-        <PopoverContent className="p-0" style={{ width: 'var(--radix-popover-trigger-width)' }} align="start">
+        <PopoverContent className="p-0" style={{ width: 'var(--anchor-width)' }} align="start">
           <Command>
             <CommandInput 
               placeholder={placeholder} 
