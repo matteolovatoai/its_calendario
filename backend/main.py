@@ -44,13 +44,13 @@ def protected_route(current_user: Annotated[str, Depends(get_current_user)]):
 # --- CRUD Lezioni ---
 
 @app.get("/api/lessons", response_model=list[schemas.LessonResponse])
-def get_lessons(db: Session = Depends(get_db)):
+def get_lessons(db: Annotated[Session, Depends(get_db)]):
     """Recupera tutte le lezioni (Accesso Pubblico per Studenti)"""
     return db.query(models.Lesson).all()
 
 
 @app.get("/api/lessons/{lesson_id}", response_model=schemas.LessonResponse)
-def get_lesson(lesson_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_lesson(lesson_id: uuid.UUID, db: Annotated[Session, Depends(get_db)]):
     """Recupera singola lezione (Accesso Pubblico per Studenti)"""
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if not lesson:
@@ -62,7 +62,7 @@ def get_lesson(lesson_id: uuid.UUID, db: Session = Depends(get_db)):
 def create_lesson(
     lesson: schemas.LessonCreate,
     current_user: Annotated[str, Depends(get_current_user)],
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Crea una nuova lezione (Solo Segreteria)"""
     db_lesson = models.Lesson(**lesson.model_dump())
@@ -77,7 +77,7 @@ def update_lesson(
     lesson_id: uuid.UUID,
     lesson_update: schemas.LessonCreate,
     current_user: Annotated[str, Depends(get_current_user)],
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Modifica una lezione esistente (Solo Segreteria)"""
     db_lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
@@ -97,7 +97,7 @@ def update_lesson(
 def delete_lesson(
     lesson_id: uuid.UUID,
     current_user: Annotated[str, Depends(get_current_user)],
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Elimina una lezione (Solo Segreteria)"""
     db_lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
