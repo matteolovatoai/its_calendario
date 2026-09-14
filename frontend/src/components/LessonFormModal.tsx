@@ -5,8 +5,114 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Lesson } from '@/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Lesson, Entity } from '@/types';
 import { fetchApi } from '@/lib/api';
+
+function CreatableCombobox({
+  items,
+  value,
+  onSelect,
+  onCreate,
+  placeholder,
+  emptyMessage,
+}: {
+  items: Entity[];
+  value: string;
+  onSelect: (id: string) => void;
+  onCreate: (name: string) => void;
+  placeholder: string;
+  emptyMessage: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+
+  const selectedItem = items.find((item) => item.id === value);
+  const exactMatch = items.some((item) => item.name.toLowerCase() === inputValue.toLowerCase());
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          {selectedItem ? selectedItem.name : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0" style={{ width: 'var(--radix-popover-trigger-width)' }} align="start">
+        <Command>
+          <CommandInput 
+            placeholder={placeholder} 
+            value={inputValue}
+            onValueChange={setInputValue}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {emptyMessage}
+              {inputValue && !exactMatch && (
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start mt-2 px-2 h-auto py-1.5"
+                  onClick={() => {
+                    onCreate(inputValue);
+                    setOpen(false);
+                    setInputValue("");
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Crea "{inputValue}"
+                </Button>
+              )}
+            </CommandEmpty>
+            <CommandGroup>
+              {items.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  value={item.name}
+                  onSelect={() => {
+                    onSelect(item.id);
+                    setOpen(false);
+                    setInputValue("");
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === item.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {item.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {inputValue && !exactMatch && (
+              <CommandGroup>
+                <CommandItem
+                  value={inputValue}
+                  onSelect={() => {
+                    onCreate(inputValue);
+                    setOpen(false);
+                    setInputValue("");
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Crea "{inputValue}"
+                </CommandItem>
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface LessonFormModalProps {
   isOpen: boolean;
@@ -17,21 +123,44 @@ interface LessonFormModalProps {
 
 export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: LessonFormModalProps) {
   const [formData, setFormData] = useState<Partial<Lesson>>({
-    subject: '',
-    teacher: '',
-    room: '',
+    subject_id: '',
+    teacher_id: '',
+    room_id: '',
     start_time: '',
     end_time: '',
   });
 
   const [loading, setLoading] = useState(false);
+  
+  const [teachers, setTeachers] = useState<Entity[]>([]);
+  const [subjects, setSubjects] = useState<Entity[]>([]);
+  const [rooms, setRooms] = useState<Entity[]>([]);
+
+  const loadEntities = async () => {
+    try {
+      const [t, s, r] = await Promise.all([
+        fetchApi('/api/teachers'),
+        fetchApi('/api/subjects'),
+        fetchApi('/api/rooms'),
+      ]);
+      setTeachers(t || []);
+      setSubjects(s || []);
+      setRooms(r || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadEntities();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (lesson) {
-      // Formatta la data per gli input type="datetime-local" (YYYY-MM-DDTHH:MM)
       const formatForInput = (isoString: string) => {
         const date = new Date(isoString);
-        // compensiamo la timezone locale per mostrare l'ora corretta nell'input
         date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
         return date.toISOString().slice(0, 16);
       };
@@ -43,9 +172,9 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
       });
     } else {
       setFormData({
-        subject: '',
-        teacher: '',
-        room: '',
+        subject_id: '',
+        teacher_id: '',
+        room_id: '',
         start_time: '',
         end_time: '',
       });
@@ -56,14 +185,37 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleCreateEntity = async (type: 'teachers' | 'subjects' | 'rooms', name: string) => {
+    try {
+      const created = await fetchApi(`/api/${type}`, {
+        method: 'POST',
+        body: JSON.stringify({ name })
+      });
+      if (created) {
+        await loadEntities();
+        if (type === 'teachers') setFormData(prev => ({...prev, teacher_id: created.id}));
+        if (type === 'subjects') setFormData(prev => ({...prev, subject_id: created.id}));
+        if (type === 'rooms') setFormData(prev => ({...prev, room_id: created.id}));
+      }
+    } catch(e) {
+      alert("Errore nella creazione");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.subject_id || !formData.teacher_id || !formData.room_id) {
+        alert("Per favore compila tutti i campi!");
+        return;
+    }
+
     setLoading(true);
 
     try {
       const payload = {
-        ...formData,
-        // Converte in UTC string se necessario per il backend
+        subject_id: formData.subject_id,
+        teacher_id: formData.teacher_id,
+        room_id: formData.room_id,
         start_time: new Date(formData.start_time!).toISOString(),
         end_time: new Date(formData.end_time!).toISOString(),
       };
@@ -115,28 +267,49 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="subject">Materia</Label>
-            <Input id="subject" name="subject" value={formData.subject} onChange={handleChange} required />
+            <Label>Materia</Label>
+            <CreatableCombobox
+              items={subjects}
+              value={formData.subject_id || ''}
+              onSelect={(val) => setFormData({ ...formData, subject_id: val })}
+              onCreate={(name) => handleCreateEntity('subjects', name)}
+              placeholder="Seleziona materia o scrivi per creare..."
+              emptyMessage="Nessuna materia trovata."
+            />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="teacher">Docente</Label>
-            <Input id="teacher" name="teacher" value={formData.teacher} onChange={handleChange} required />
+            <Label>Docente</Label>
+            <CreatableCombobox
+              items={teachers}
+              value={formData.teacher_id || ''}
+              onSelect={(val) => setFormData({ ...formData, teacher_id: val })}
+              onCreate={(name) => handleCreateEntity('teachers', name)}
+              placeholder="Seleziona docente o scrivi per creare..."
+              emptyMessage="Nessun docente trovato."
+            />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="room">Aula</Label>
-            <Input id="room" name="room" value={formData.room} onChange={handleChange} required />
+            <Label>Aula</Label>
+            <CreatableCombobox
+              items={rooms}
+              value={formData.room_id || ''}
+              onSelect={(val) => setFormData({ ...formData, room_id: val })}
+              onCreate={(name) => handleCreateEntity('rooms', name)}
+              placeholder="Seleziona aula o scrivi per creare..."
+              emptyMessage="Nessuna aula trovata."
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="start_time">Inizio</Label>
-              <Input type="datetime-local" id="start_time" name="start_time" value={formData.start_time} onChange={handleChange} required />
+              <Input type="datetime-local" id="start_time" name="start_time" value={formData.start_time || ''} onChange={handleChange} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="end_time">Fine</Label>
-              <Input type="datetime-local" id="end_time" name="end_time" value={formData.end_time} onChange={handleChange} required />
+              <Input type="datetime-local" id="end_time" name="end_time" value={formData.end_time || ''} onChange={handleChange} required />
             </div>
           </div>
 

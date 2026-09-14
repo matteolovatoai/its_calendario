@@ -50,6 +50,45 @@ def protected_route(current_user: Annotated[str, Depends(get_current_user)]):
     return {"message": f"Ciao {current_user}, il token JWT funziona perfettamente!"}
 
 
+# --- CRUD Entità Collegate ---
+
+@app.get("/api/teachers", response_model=list[schemas.EntityResponse])
+def get_teachers(db: Annotated[Session, Depends(get_db)]):
+    return db.query(models.Teacher).all()
+
+@app.post("/api/teachers", response_model=schemas.EntityResponse, status_code=status.HTTP_201_CREATED)
+def create_teacher(teacher: schemas.EntityCreate, current_user: Annotated[str, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    db_teacher = models.Teacher(**teacher.model_dump())
+    db.add(db_teacher)
+    db.commit()
+    db.refresh(db_teacher)
+    return db_teacher
+
+@app.get("/api/subjects", response_model=list[schemas.EntityResponse])
+def get_subjects(db: Annotated[Session, Depends(get_db)]):
+    return db.query(models.Subject).all()
+
+@app.post("/api/subjects", response_model=schemas.EntityResponse, status_code=status.HTTP_201_CREATED)
+def create_subject(subject: schemas.EntityCreate, current_user: Annotated[str, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    db_subject = models.Subject(**subject.model_dump())
+    db.add(db_subject)
+    db.commit()
+    db.refresh(db_subject)
+    return db_subject
+
+@app.get("/api/rooms", response_model=list[schemas.EntityResponse])
+def get_rooms(db: Annotated[Session, Depends(get_db)]):
+    return db.query(models.Room).all()
+
+@app.post("/api/rooms", response_model=schemas.EntityResponse, status_code=status.HTTP_201_CREATED)
+def create_room(room: schemas.EntityCreate, current_user: Annotated[str, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    db_room = models.Room(**room.model_dump())
+    db.add(db_room)
+    db.commit()
+    db.refresh(db_room)
+    return db_room
+
+
 # --- CRUD Lezioni ---
 
 

@@ -193,9 +193,9 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
                       zIndex: 5,
                     }}
                   >
-                    <div className="font-bold truncate leading-tight">{lesson.subject}</div>
-                    <div className="truncate mt-0.5 sm:mt-1 opacity-90">{lesson.teacher}</div>
-                    <div className="text-blue-700 dark:text-blue-300 truncate mt-auto">{lesson.room}</div>
+                    <div className="font-bold truncate leading-tight">{lesson.subject.name}</div>
+                    <div className="truncate mt-0.5 sm:mt-1 opacity-90">{lesson.teacher.name}</div>
+                    <div className="text-blue-700 dark:text-blue-300 truncate mt-auto">{lesson.room.name}</div>
                   </div>
                 );
               })}
