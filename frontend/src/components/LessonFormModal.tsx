@@ -34,78 +34,80 @@ function CreatableCombobox({
   const exactMatch = items.some((item) => item.name.toLowerCase() === inputValue.toLowerCase());
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger 
-        className={cn(buttonVariants({ variant: "outline" }), "w-full justify-between font-normal active:translate-y-0")}
-      >
-        {selectedItem ? selectedItem.name : placeholder}
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </PopoverTrigger>
-      <PopoverContent className="p-0" style={{ width: 'var(--radix-popover-trigger-width)' }} align="start">
-        <Command>
-          <CommandInput 
-            placeholder={placeholder} 
-            value={inputValue}
-            onValueChange={setInputValue}
-          />
-          <CommandList>
-            <CommandEmpty>
-              {emptyMessage}
-              {inputValue && !exactMatch && (
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start mt-2 px-2 h-auto py-1.5"
-                  onClick={() => {
-                    onCreate(inputValue);
-                    setOpen(false);
-                    setInputValue("");
-                  }}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Crea "{inputValue}"
-                </Button>
-              )}
-            </CommandEmpty>
-            <CommandGroup>
-              {items.map((item) => (
-                <CommandItem
-                  key={item.id}
-                  value={item.name}
-                  onSelect={() => {
-                    onSelect(item.id);
-                    setOpen(false);
-                    setInputValue("");
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === item.id ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {item.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            {inputValue && !exactMatch && (
+    <div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger 
+          className={cn(buttonVariants({ variant: "outline" }), "w-full justify-between font-normal active:translate-y-0")}
+        >
+          {selectedItem ? selectedItem.name : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </PopoverTrigger>
+        <PopoverContent className="p-0" style={{ width: 'var(--radix-popover-trigger-width)' }} align="start">
+          <Command>
+            <CommandInput 
+              placeholder={placeholder} 
+              value={inputValue}
+              onValueChange={setInputValue}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {emptyMessage}
+                {inputValue && !exactMatch && (
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start mt-2 px-2 h-auto py-1.5"
+                    onClick={() => {
+                      onCreate(inputValue);
+                      setOpen(false);
+                      setInputValue("");
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Crea "{inputValue}"
+                  </Button>
+                )}
+              </CommandEmpty>
               <CommandGroup>
-                <CommandItem
-                  value={inputValue}
-                  onSelect={() => {
-                    onCreate(inputValue);
-                    setOpen(false);
-                    setInputValue("");
-                  }}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Crea "{inputValue}"
-                </CommandItem>
+                {items.map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    value={item.name}
+                    onSelect={() => {
+                      onSelect(item.id);
+                      setOpen(false);
+                      setInputValue("");
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === item.id ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {item.name}
+                  </CommandItem>
+                ))}
               </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+              {inputValue && !exactMatch && (
+                <CommandGroup>
+                  <CommandItem
+                    value={inputValue}
+                    onSelect={() => {
+                      onCreate(inputValue);
+                      setOpen(false);
+                      setInputValue("");
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Crea "{inputValue}"
+                  </CommandItem>
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 
