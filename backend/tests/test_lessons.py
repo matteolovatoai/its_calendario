@@ -4,6 +4,7 @@ from config import settings
 settings.ADMIN_PASSWORD_HASH = bcrypt.hashpw(b"password", bcrypt.gensalt()).decode(
     "utf-8"
 )
+settings.JWT_SECRET = "super-secret-test-key-must-be-at-least-32-bytes-long"
 
 from datetime import datetime, timedelta, timezone
 
