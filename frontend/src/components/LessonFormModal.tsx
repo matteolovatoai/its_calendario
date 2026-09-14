@@ -107,8 +107,8 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()} disablePointerDismissal>
+      <DialogContent className="sm:max-w-[425px] md:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{lesson ? 'Modifica Lezione' : 'Nuova Lezione'}</DialogTitle>
         </DialogHeader>
@@ -129,7 +129,7 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
             <Input id="room" name="room" value={formData.room} onChange={handleChange} required />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="start_time">Inizio</Label>
               <Input type="datetime-local" id="start_time" name="start_time" value={formData.start_time} onChange={handleChange} required />
@@ -140,18 +140,22 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
             </div>
           </div>
 
-          <DialogFooter className="mt-6">
-            {lesson && (
+          <DialogFooter className="mt-6 flex-row justify-between sm:justify-between">
+            {lesson ? (
               <Button type="button" variant="destructive" onClick={handleDelete} disabled={loading}>
                 Elimina
               </Button>
+            ) : (
+              <div /> /* Empty div to keep flex-between spacing if no lesson */
             )}
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Annulla
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Salvataggio...' : 'Salva'}
-            </Button>
+            <div className="flex gap-2 ml-auto">
+              <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+                Annulla
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Salvataggio...' : 'Salva'}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

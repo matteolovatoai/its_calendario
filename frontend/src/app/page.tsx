@@ -8,6 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import { Lesson } from '@/types';
 import LoginForm from '@/components/LoginForm';
 
+import { ThemeToggle } from '@/components/ThemeToggle';
+
 export default function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -34,7 +36,8 @@ export default function HomePage() {
       <div className="flex flex-row gap-2 justify-between items-center mb-4 sm:mb-8 shrink-0">
         <h1 className="text-xl sm:text-3xl font-bold truncate">Calendario</h1>
         
-        <div className="flex gap-4">
+        <div className="flex gap-2 sm:gap-4 items-center">
+          <ThemeToggle />
           {isAuthenticated ? (
             <>
               <Button onClick={handleAddLesson}>+ Nuova Lezione</Button>

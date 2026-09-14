@@ -65,6 +65,10 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
     setCurrentWeekStart(newDate);
   };
 
+  const goToday = () => {
+    setCurrentWeekStart(getMonday(new Date()));
+  };
+
   const daysOfWeek = Array.from({ length: 5 }).map((_, i) => {
     const d = new Date(currentWeekStart);
     d.setDate(d.getDate() + i);
@@ -91,16 +95,22 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-500">Caricamento calendario...</div>;
+    return <div className="p-8 text-center text-muted-foreground">Caricamento calendario...</div>;
   }
 
   return (
-    <div className="flex flex-col border border-gray-200 rounded-xl bg-white shadow-sm">
+    <div className="flex flex-col border border-border rounded-xl bg-card shadow-sm text-card-foreground">
       
       {/* Navbar Settimana */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+      <div className="flex items-center justify-between p-4 border-b border-border bg-muted/50 rounded-t-xl">
         <Button variant="outline" size="sm" onClick={goPrevWeek}>&larr; Precedente</Button>
-        <span className="font-semibold text-lg capitalize">{monthName}</span>
+        <span 
+          onClick={goToday}
+          className="font-semibold text-lg capitalize cursor-pointer hover:text-primary transition-colors hover:underline decoration-primary/50 underline-offset-4"
+          title="Torna a oggi"
+        >
+          {monthName}
+        </span>
         <Button variant="outline" size="sm" onClick={goNextWeek}>Successiva &rarr;</Button>
       </div>
 
@@ -109,14 +119,14 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
         <div className="min-w-[350px]">
           
           {/* Header Giorni */}
-          <div className="grid grid-cols-[50px_1fr_1fr_1fr_1fr_1fr] sm:grid-cols-[60px_1fr_1fr_1fr_1fr_1fr] border-b border-gray-200 bg-gray-50">
-            <div className="p-1 sm:p-2 border-r border-gray-200 flex items-center justify-center text-[10px] sm:text-xs font-semibold text-gray-500">
+          <div className="grid grid-cols-[50px_1fr_1fr_1fr_1fr_1fr] sm:grid-cols-[60px_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-muted/50">
+            <div className="p-1 sm:p-2 border-r border-border flex items-center justify-center text-[10px] sm:text-xs font-semibold text-muted-foreground">
               Ora
             </div>
             {daysOfWeek.map((date, i) => (
-              <div key={i} className="p-2 text-center border-r border-gray-200 last:border-r-0 flex flex-col items-center justify-center">
-                <span className="text-sm font-semibold text-gray-700 hidden sm:block">{DAY_NAMES[i]} {date.getDate()}</span>
-                <span className="text-sm font-semibold text-gray-700 sm:hidden">{DAY_INITIALS[i]} {date.getDate()}</span>
+              <div key={i} className="p-2 text-center border-r border-border last:border-r-0 flex flex-col items-center justify-center">
+                <span className="text-sm font-semibold text-foreground hidden sm:block">{DAY_NAMES[i]} {date.getDate()}</span>
+                <span className="text-sm font-semibold text-foreground sm:hidden">{DAY_INITIALS[i]} {date.getDate()}</span>
               </div>
             ))}
           </div>
@@ -125,18 +135,18 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
           <div className="flex h-[calc(100vh-200px)] min-h-[400px] max-h-[800px] py-4">
             
             {/* Etichette Orarie */}
-            <div className="w-[50px] sm:w-[60px] shrink-0 border-r border-gray-200 bg-white relative">
+            <div className="w-[50px] sm:w-[60px] shrink-0 border-r border-border bg-card relative">
               {HOURS.slice(0, -1).map((hour, idx) => (
                 <div 
                   key={hour} 
-                  className="absolute w-full text-xs text-gray-400 text-center -translate-y-1/2"
+                  className="absolute w-full text-xs text-muted-foreground text-center -translate-y-1/2"
                   style={{ top: `${(idx / (HOURS.length - 1)) * 100}%` }}
                 >
                   {hour.toString().padStart(2, '0')}:00
                 </div>
               ))}
               <div 
-                className="absolute w-full text-xs text-gray-400 text-center -translate-y-1/2"
+                className="absolute w-full text-xs text-muted-foreground text-center -translate-y-1/2"
                 style={{ top: '100%' }}
               >
                 {END_HOUR.toString().padStart(2, '0')}:00
@@ -151,14 +161,14 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
               {/* Linee verticali */}
               <div className="absolute inset-0 grid grid-cols-5 pointer-events-none">
                 {DAY_NAMES.map((_, i) => (
-                  <div key={`col-${i}`} className="border-r border-gray-200 last:border-r-0 h-full" />
+                  <div key={`col-${i}`} className="border-r border-border last:border-r-0 h-full" />
                 ))}
               </div>
               
               {/* Linee orizzontali */}
               <div className="absolute inset-0 grid pointer-events-none" style={{ gridTemplateRows: `repeat(${END_HOUR - START_HOUR}, 1fr)` }}>
                 {Array.from({ length: END_HOUR - START_HOUR }).map((_, i) => (
-                  <div key={`row-${i}`} className={`border-b border-gray-100 w-full ${i === 0 ? 'border-t' : ''}`} />
+                  <div key={`row-${i}`} className={`border-b border-border/50 w-full ${i === 0 ? 'border-t' : ''}`} />
                 ))}
               </div>
 
@@ -173,8 +183,8 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
                     onClick={() => isAuthenticated && onLessonEdit?.(lesson)}
                     className={`
                       m-0.5 p-1.5 sm:p-2 rounded-md border text-xs overflow-hidden flex flex-col shadow-sm transition-colors
-                      ${isAuthenticated ? 'cursor-pointer hover:bg-blue-100 hover:border-blue-300' : ''}
-                      bg-blue-50 border-blue-200 text-blue-900
+                      ${isAuthenticated ? 'cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:border-blue-300 dark:hover:border-blue-600' : ''}
+                      bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100
                     `}
                     style={{
                       gridRowStart: pos.gridRowStart,
@@ -185,7 +195,7 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
                   >
                     <div className="font-bold truncate leading-tight">{lesson.subject}</div>
                     <div className="truncate mt-0.5 sm:mt-1 opacity-90">{lesson.teacher}</div>
-                    <div className="text-gray-500 truncate mt-auto">{lesson.room}</div>
+                    <div className="text-blue-700 dark:text-blue-300 truncate mt-auto">{lesson.room}</div>
                   </div>
                 );
               })}
