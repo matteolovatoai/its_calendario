@@ -1,18 +1,17 @@
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import jwt
 from config import settings
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import bcrypt
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
 
 def verify_password(plain_password, hashed_password):
     return bcrypt.checkpw(
-        plain_password.encode("utf-8"), 
-        hashed_password.encode("utf-8")
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
     )
 
 

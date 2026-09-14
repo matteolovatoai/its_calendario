@@ -7,10 +7,19 @@ from auth import create_access_token, get_current_user, verify_password
 from config import settings
 from database import get_db
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 app = FastAPI(title="ITS Calendario API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://192.168.1.191:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/api/token")
@@ -43,6 +52,7 @@ def protected_route(current_user: Annotated[str, Depends(get_current_user)]):
 
 # --- CRUD Lezioni ---
 
+
 @app.get("/api/lessons", response_model=list[schemas.LessonResponse])
 def get_lessons(db: Annotated[Session, Depends(get_db)]):
     """Recupera tutte le lezioni (Accesso Pubblico per Studenti)"""
@@ -58,7 +68,11 @@ def get_lesson(lesson_id: uuid.UUID, db: Annotated[Session, Depends(get_db)]):
     return lesson
 
 
-@app.post("/api/lessons", response_model=schemas.LessonResponse, status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/api/lessons",
+    response_model=schemas.LessonResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_lesson(
     lesson: schemas.LessonCreate,
     current_user: Annotated[str, Depends(get_current_user)],
