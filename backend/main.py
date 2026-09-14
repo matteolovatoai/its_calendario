@@ -4,7 +4,6 @@ from typing import Annotated
 import models
 import schemas
 from auth import create_access_token, get_current_user, verify_password
-from config import settings
 from database import get_db
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,18 +24,19 @@ app.add_middleware(
 @app.post("/api/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[Session, Depends(get_db)],
 ):
-    # Validazione hardcoded contro le credenziali di admin
-    if form_data.username != settings.ADMIN_USERNAME or not verify_password(
-        form_data.password, settings.ADMIN_PASSWORD_HASH
-    ):
+    user = (
+        db.query(models.User).filter(models.User.username == form_data.username).first()
+    )
+    if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Username o password errati",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(data={"sub": settings.ADMIN_USERNAME})
+    access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -52,36 +52,66 @@ def protected_route(current_user: Annotated[str, Depends(get_current_user)]):
 
 # --- CRUD Entità Collegate ---
 
+
 @app.get("/api/teachers", response_model=list[schemas.EntityResponse])
 def get_teachers(db: Annotated[Session, Depends(get_db)]):
     return db.query(models.Teacher).all()
 
-@app.post("/api/teachers", response_model=schemas.EntityResponse, status_code=status.HTTP_201_CREATED)
-def create_teacher(teacher: schemas.EntityCreate, current_user: Annotated[str, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+
+@app.post(
+    "/api/teachers",
+    response_model=schemas.EntityResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_teacher(
+    teacher: schemas.EntityCreate,
+    current_user: Annotated[str, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
     db_teacher = models.Teacher(**teacher.model_dump())
     db.add(db_teacher)
     db.commit()
     db.refresh(db_teacher)
     return db_teacher
 
+
 @app.get("/api/subjects", response_model=list[schemas.EntityResponse])
 def get_subjects(db: Annotated[Session, Depends(get_db)]):
     return db.query(models.Subject).all()
 
-@app.post("/api/subjects", response_model=schemas.EntityResponse, status_code=status.HTTP_201_CREATED)
-def create_subject(subject: schemas.EntityCreate, current_user: Annotated[str, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+
+@app.post(
+    "/api/subjects",
+    response_model=schemas.EntityResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_subject(
+    subject: schemas.EntityCreate,
+    current_user: Annotated[str, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
     db_subject = models.Subject(**subject.model_dump())
     db.add(db_subject)
     db.commit()
     db.refresh(db_subject)
     return db_subject
 
+
 @app.get("/api/rooms", response_model=list[schemas.EntityResponse])
 def get_rooms(db: Annotated[Session, Depends(get_db)]):
     return db.query(models.Room).all()
 
-@app.post("/api/rooms", response_model=schemas.EntityResponse, status_code=status.HTTP_201_CREATED)
-def create_room(room: schemas.EntityCreate, current_user: Annotated[str, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+
+@app.post(
+    "/api/rooms",
+    response_model=schemas.EntityResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_room(
+    room: schemas.EntityCreate,
+    current_user: Annotated[str, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
     db_room = models.Room(**room.model_dump())
     db.add(db_room)
     db.commit()

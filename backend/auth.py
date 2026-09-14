@@ -35,6 +35,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 from typing import Annotated
 
+import models
+from database import SessionLocal
+
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     credentials_exception = HTTPException(
@@ -50,7 +53,12 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     except jwt.PyJWTError:
         raise credentials_exception
 
-    if username != settings.ADMIN_USERNAME:
-        raise credentials_exception
-
-    return username
+    # Verifica che l'utente esista ancora nel DB
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if user is None:
+            raise credentials_exception
+        return user.username
+    finally:
+        db.close()

@@ -12,7 +12,7 @@
 * **Configurazione**: `pydantic-settings` (Licenza MIT) - Gestione tipizzata delle variabili d'ambiente.
 * **Database ORM & Migrations**: `SQLAlchemy` (ORM) + `Alembic` (Migrazioni) + `psycopg` (Licenze MIT).
 * **Database Engine**: PostgreSQL hostato su **Neon** (Serverless, scalabile, facile migrazione locale).
-* **Autenticazione**: `PyJWT` (Licenza MIT) e `passlib` (con `bcrypt`) per JWT e hashing password. Nessun DB per gli utenti in V1, utente admin singolo caricato da variabili d'ambiente.
+* **Autenticazione**: `PyJWT` (Licenza MIT) e `passlib` (con `bcrypt`) per JWT e hashing password. Autenticazione basata su tabella `users` nel database (con un utente base di amministrazione pre-inserito).
 
 ### Frontend (TypeScript / React)
 * **Framework**: Next.js (App Router) (Licenza MIT).
@@ -24,7 +24,7 @@
 
 ## Modello Dati (Database Schema)
 
-Esiste una sola tabella per l'MVP per minimizzare la complessità.
+Per minimizzare la complessità ci sono le tabelle essenziali per gestire lezioni, anagrafiche e utenti.
 
 **Tabella: `lessons`**
 | Campo | Tipo | Descrizione |

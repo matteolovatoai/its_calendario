@@ -12,10 +12,10 @@ Rappresenta l'utente finale primario che consulta il calendario. Non ha alcun ac
 * **Accesso API:** Solo endpoint GET.
 
 ## 2. Segreteria / Admin (Utente Autenticato)
-Rappresenta l'operatore che gestisce l'inserimento dei dati. 
+Rappresenta l'operatore che gestisce l'inserimento dei dati.
 
-**Implementazione MVP:** 
-Esiste un singolo utente di sistema "Segreteria". Le sue credenziali (Username e Password Hash) sono salvate in modo sicuro tramite variabili d'ambiente (`.env`) e caricate tramite `pydantic-settings`. Non c'è una tabella `users` nel database.
+**Implementazione:**
+Le credenziali di "Segreteria" (e dei futuri account admin) risiedono in una tabella `users` del database. L'utente storico "segreteria" è di base nel sistema e non può essere rimosso, garantendo un accesso garantito.
 
 **Permessi / Capacità:**
 * Tutte le capacità dello Studente.
