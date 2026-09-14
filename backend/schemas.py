@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -15,14 +14,6 @@ class LessonBase(BaseModel):
 
 class LessonCreate(LessonBase):
     pass
-
-
-class LessonUpdate(BaseModel):
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    subject: Optional[str] = None
-    teacher: Optional[str] = None
-    room: Optional[str] = None
 
 
 class LessonResponse(LessonBase):

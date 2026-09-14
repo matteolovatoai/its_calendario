@@ -75,7 +75,7 @@ def create_lesson(
 @app.put("/api/lessons/{lesson_id}", response_model=schemas.LessonResponse)
 def update_lesson(
     lesson_id: uuid.UUID,
-    lesson_update: schemas.LessonUpdate,
+    lesson_update: schemas.LessonCreate,
     current_user: Annotated[str, Depends(get_current_user)],
     db: Session = Depends(get_db),
 ):
