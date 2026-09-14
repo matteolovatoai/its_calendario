@@ -119,10 +119,18 @@ interface LessonFormModalProps {
 }
 
 export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: LessonFormModalProps) {
-  const [formData, setFormData] = useState<Partial<Lesson>>({
+  const [formData, setFormData] = useState<{
+    subject_id: string;
+    teacher_id: string;
+    room_id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+  }>({
     subject_id: '',
     teacher_id: '',
     room_id: '',
+    date: '',
     start_time: '',
     end_time: '',
   });
@@ -156,24 +164,38 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
 
   useEffect(() => {
     if (lesson) {
-      const formatForInput = (isoString: string) => {
-        const date = new Date(isoString);
-        date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-        return date.toISOString().slice(0, 16);
-      };
+      // Extract date and times from ISO strings based on local time
+      const start = new Date(lesson.start_time);
+      const end = new Date(lesson.end_time);
+      
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      
+      // We format using local timezone
+      const dateStr = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+      const startStr = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
+      const endStr = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
 
       setFormData({
-        ...lesson,
-        start_time: formatForInput(lesson.start_time),
-        end_time: formatForInput(lesson.end_time),
+        subject_id: lesson.subject.id,
+        teacher_id: lesson.teacher.id,
+        room_id: lesson.room.id,
+        date: dateStr,
+        start_time: startStr,
+        end_time: endStr,
       });
     } else {
+      // Default to today
+      const today = new Date();
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const dateStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
       setFormData({
         subject_id: '',
         teacher_id: '',
         room_id: '',
-        start_time: '',
-        end_time: '',
+        date: dateStr,
+        start_time: '09:00',
+        end_time: '11:00',
       });
     }
   }, [lesson, isOpen]);
@@ -201,7 +223,7 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.subject_id || !formData.teacher_id || !formData.room_id) {
+    if (!formData.subject_id || !formData.teacher_id || !formData.room_id || !formData.date || !formData.start_time || !formData.end_time) {
         alert("Per favore compila tutti i campi!");
         return;
     }
@@ -209,12 +231,17 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
     setLoading(true);
 
     try {
+      // Combine date and time strings and convert to ISO string.
+      // We parse them as local datetimes
+      const startDateTime = new Date(`${formData.date}T${formData.start_time}`);
+      const endDateTime = new Date(`${formData.date}T${formData.end_time}`);
+
       const payload = {
         subject_id: formData.subject_id,
         teacher_id: formData.teacher_id,
         room_id: formData.room_id,
-        start_time: new Date(formData.start_time!).toISOString(),
-        end_time: new Date(formData.end_time!).toISOString(),
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
       };
 
       if (lesson?.id) {
@@ -264,18 +291,6 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Materia</Label>
-            <CreatableCombobox
-              items={subjects}
-              value={formData.subject_id || ''}
-              onSelect={(val) => setFormData({ ...formData, subject_id: val })}
-              onCreate={(name) => handleCreateEntity('subjects', name)}
-              placeholder="Seleziona materia o scrivi per creare..."
-              emptyMessage="Nessuna materia trovata."
-            />
-          </div>
-          
-          <div className="space-y-2">
             <Label>Docente</Label>
             <CreatableCombobox
               items={teachers}
@@ -284,6 +299,18 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
               onCreate={(name) => handleCreateEntity('teachers', name)}
               placeholder="Seleziona docente o scrivi per creare..."
               emptyMessage="Nessun docente trovato."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Materia</Label>
+            <CreatableCombobox
+              items={subjects}
+              value={formData.subject_id || ''}
+              onSelect={(val) => setFormData({ ...formData, subject_id: val })}
+              onCreate={(name) => handleCreateEntity('subjects', name)}
+              placeholder="Seleziona materia o scrivi per creare..."
+              emptyMessage="Nessuna materia trovata."
             />
           </div>
 
@@ -299,14 +326,19 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="date">Data</Label>
+            <Input type="date" id="date" name="date" value={formData.date || ''} onChange={handleChange} required />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="start_time">Inizio</Label>
-              <Input type="datetime-local" id="start_time" name="start_time" value={formData.start_time || ''} onChange={handleChange} required />
+              <Label htmlFor="start_time">Ora Inizio</Label>
+              <Input type="time" id="start_time" name="start_time" value={formData.start_time || ''} onChange={handleChange} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="end_time">Fine</Label>
-              <Input type="datetime-local" id="end_time" name="end_time" value={formData.end_time || ''} onChange={handleChange} required />
+              <Label htmlFor="end_time">Ora Fine</Label>
+              <Input type="time" id="end_time" name="end_time" value={formData.end_time || ''} onChange={handleChange} required />
             </div>
           </div>
 
