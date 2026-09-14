@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -31,7 +31,7 @@ class EntityResponse(EntityBase):
 
 class LessonBase(BaseModel):
     start_time: datetime
-    end_time: datetime | None = None
+    end_time: datetime
     teacher_id: UUID
     subject_id: UUID
     room_id: UUID
@@ -49,9 +49,6 @@ class LessonCreate(LessonBase):
 
     @model_validator(mode='after')
     def validate_times(self) -> 'LessonCreate':
-        if self.end_time is None:
-            self.end_time = self.start_time + timedelta(hours=4)
-
         if self.end_time <= self.start_time:
             raise ValueError("L'orario di fine deve essere successivo all'orario di inizio")
         
