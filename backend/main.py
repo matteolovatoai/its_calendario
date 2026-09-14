@@ -148,6 +148,19 @@ def create_lesson(
     db: Annotated[Session, Depends(get_db)],
 ):
     """Crea una nuova lezione (Solo Segreteria)"""
+    
+    # Controllo sovrapposizione
+    overlapping = db.query(models.Lesson).filter(
+        models.Lesson.start_time < lesson.end_time,
+        models.Lesson.end_time > lesson.start_time
+    ).first()
+    
+    if overlapping:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La lezione si sovrappone a una lezione esistente in questo orario."
+        )
+
     db_lesson = models.Lesson(**lesson.model_dump())
     db.add(db_lesson)
     db.commit()
@@ -168,6 +181,23 @@ def update_lesson(
         raise HTTPException(status_code=404, detail="Lezione non trovata")
 
     update_data = lesson_update.model_dump(exclude_unset=True)
+    
+    new_start = update_data.get('start_time', db_lesson.start_time)
+    new_end = update_data.get('end_time', db_lesson.end_time)
+    
+    # Controllo sovrapposizione (escludendo la lezione stessa)
+    overlapping = db.query(models.Lesson).filter(
+        models.Lesson.id != lesson_id,
+        models.Lesson.start_time < new_end,
+        models.Lesson.end_time > new_start
+    ).first()
+
+    if overlapping:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La modifica causa una sovrapposizione con un'altra lezione esistente."
+        )
+
     for key, value in update_data.items():
         setattr(db_lesson, key, value)
 
