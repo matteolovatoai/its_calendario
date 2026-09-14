@@ -195,13 +195,26 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
         room_id: '',
         date: dateStr,
         start_time: '09:00',
-        end_time: '11:00',
+        end_time: '13:00',
       });
     }
   }, [lesson, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === 'start_time') {
+      const [hours, minutes] = value.split(':').map(Number);
+      if (!isNaN(hours) && !isNaN(minutes)) {
+        // Aggiunge 4 ore e formatta aggiungendo lo zero iniziale se necessario
+        const endHours = (hours + 4) % 24;
+        const end_time = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        setFormData((prev) => ({ ...prev, start_time: value, end_time }));
+        return;
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleCreateEntity = async (type: 'teachers' | 'subjects' | 'rooms', name: string) => {
