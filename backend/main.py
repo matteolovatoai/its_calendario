@@ -7,7 +7,6 @@ from auth import create_access_token, get_current_user, get_current_user_optiona
 from database import get_db
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 app = FastAPI(title="ITS Calendario API")
@@ -30,15 +29,14 @@ app.add_middleware(
 
 @app.post("/api/auth/google", response_model=schemas.TokenResponse)
 async def login_google(
-    request: schemas.GoogleAuthRequest,
-    db: Annotated[Session, Depends(get_db)]
+    request: schemas.GoogleAuthRequest, db: Annotated[Session, Depends(get_db)]
 ):
-    from auth import verify_google_token, create_access_token
-    
+    from auth import verify_google_token
+
     id_info = verify_google_token(request.token)
     if not id_info:
         raise HTTPException(status_code=401, detail="Token Google non valido")
-    
+
     email = id_info.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="Email mancante nel token")
@@ -51,7 +49,7 @@ async def login_google(
         if user_in_db:
             role = "admin"
         else:
-            role = "student" # Default per @scuola.com non in whitelist, come da task (o eccezione 403?)
+            role = "student"  # Default per @scuola.com non in whitelist, come da task (o eccezione 403?)
             # Wait, the issue says: "Se @scuola.com -> verifica se l'email esiste... Se sì, ruolo admin, altrimenti ruolo student."
     else:
         raise HTTPException(status_code=403, detail="Dominio non autorizzato")
@@ -142,21 +140,23 @@ def create_room(
 # --- CRUD Lezioni ---
 
 
-
 @app.get("/api/lessons", response_model=list[schemas.LessonResponse])
 def get_lessons(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None
+    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
 ):
     """Recupera tutte le lezioni. Oscura il docente per i non loggati (GDPR)."""
     lessons = db.query(models.Lesson).all()
     
-    if not current_user:
-        for lesson in lessons:
-            lesson.teacher = None
-            lesson.teacher_id = None
+    response_lessons = []
+    for lesson in lessons:
+        lesson_dto = schemas.LessonResponse.model_validate(lesson)
+        if not current_user:
+            lesson_dto.teacher = None
+            lesson_dto.teacher_id = None
+        response_lessons.append(lesson_dto)
             
-    return lessons
+    return response_lessons
 
 
 @app.get("/api/lessons/{lesson_id}", response_model=schemas.LessonResponse)
