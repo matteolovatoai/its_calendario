@@ -75,3 +75,10 @@ class LessonResponse(LessonBase):
         if isinstance(v, str):
             return v.strip().title()
         return v
+
+class GoogleAuthRequest(BaseModel):
+    token: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str

@@ -28,22 +28,35 @@ app.add_middleware(
 )
 
 
-@app.post("/api/token")
-async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[Session, Depends(get_db)],
+@app.post("/api/auth/google", response_model=schemas.TokenResponse)
+async def login_google(
+    request: schemas.GoogleAuthRequest,
+    db: Annotated[Session, Depends(get_db)]
 ):
-    user = (
-        db.query(models.User).filter(models.User.username == form_data.username).first()
-    )
-    if not user or not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Username o password errati",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    from auth import verify_google_token, create_access_token
+    
+    id_info = verify_google_token(request.token)
+    if not id_info:
+        raise HTTPException(status_code=401, detail="Token Google non valido")
+    
+    email = id_info.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email mancante nel token")
 
-    access_token = create_access_token(data={"sub": user.username})
+    role = "student"
+    if email.endswith("@allievi.scuola.com"):
+        role = "student"
+    elif email.endswith("@scuola.com"):
+        user_in_db = db.query(models.User).filter(models.User.email == email).first()
+        if user_in_db:
+            role = "admin"
+        else:
+            role = "student" # Default per @scuola.com non in whitelist, come da task (o eccezione 403?)
+            # Wait, the issue says: "Se @scuola.com -> verifica se l'email esiste... Se sì, ruolo admin, altrimenti ruolo student."
+    else:
+        raise HTTPException(status_code=403, detail="Dominio non autorizzato")
+
+    access_token = create_access_token(data={"sub": email, "role": role})
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -53,7 +66,7 @@ def read_root():
 
 
 @app.get("/api/protected-test")
-def protected_route(current_user: Annotated[str, Depends(get_current_user)]):
+def protected_route(current_user: Annotated[dict, Depends(get_current_user)]):
     return {"message": f"Ciao {current_user}, il token JWT funziona perfettamente!"}
 
 
@@ -72,7 +85,7 @@ def get_teachers(db: Annotated[Session, Depends(get_db)]):
 )
 def create_teacher(
     teacher: schemas.EntityCreate,
-    current_user: Annotated[str, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
     db_teacher = models.Teacher(**teacher.model_dump())
@@ -94,7 +107,7 @@ def get_subjects(db: Annotated[Session, Depends(get_db)]):
 )
 def create_subject(
     subject: schemas.EntityCreate,
-    current_user: Annotated[str, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
     db_subject = models.Subject(**subject.model_dump())
@@ -116,7 +129,7 @@ def get_rooms(db: Annotated[Session, Depends(get_db)]):
 )
 def create_room(
     room: schemas.EntityCreate,
-    current_user: Annotated[str, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
     db_room = models.Room(**room.model_dump())
@@ -151,7 +164,7 @@ def get_lesson(lesson_id: uuid.UUID, db: Annotated[Session, Depends(get_db)]):
 )
 def create_lesson(
     lesson: schemas.LessonCreate,
-    current_user: Annotated[str, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Crea una nuova lezione (Solo Segreteria)"""
@@ -183,7 +196,7 @@ def create_lesson(
 def update_lesson(
     lesson_id: uuid.UUID,
     lesson_update: schemas.LessonCreate,
-    current_user: Annotated[str, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Modifica una lezione esistente (Solo Segreteria)"""
@@ -224,7 +237,7 @@ def update_lesson(
 @app.delete("/api/lessons/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_lesson(
     lesson_id: uuid.UUID,
-    current_user: Annotated[str, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Elimina una lezione (Solo Segreteria)"""

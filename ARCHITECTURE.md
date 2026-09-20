@@ -11,7 +11,8 @@
 * **Framework**: FastAPI (Licenza MIT) - Veloce, type-safe, auto-documentato.
 * **Configurazione**: `pydantic-settings` (Licenza MIT) - Gestione tipizzata delle variabili d'ambiente.
 * **Database ORM & Migrations**: `SQLAlchemy` (ORM) + `Alembic` (Migrazioni) + `psycopg` (Licenze MIT).
-* **Database Engine**: PostgreSQL hostato su **Neon** (Serverless, scalabile, facile migrazione locale).
+* **Database Engine**: PostgreSQL hostato su **Neon** (Serverless, scalabile).
+  * *Flusso di Sviluppo (Database as Code)*: Sfruttiamo la funzionalità "Copy-on-Write" di Neon per creare **Branch** isolati del database di produzione (es. per dev/test). Lo sviluppo e la generazione delle migrazioni avvengono sul branch tramite Alembic (`alembic revision --autogenerate`). In produzione, durante il deploy su Vercel/Render, viene eseguito esclusivamente `alembic upgrade head` sul branch `main`, garantendo un'evoluzione sicura e senza downtime dello schema dati.
 * **Autenticazione**: Delegata a **Google OAuth / NextAuth** sul frontend. Il backend riceve e valida il JWT, verificando il dominio dell'email e i ruoli nel DB (RBAC). Nessuna gestione locale delle password.
 
 ### Frontend (TypeScript / React)

@@ -2,6 +2,10 @@
 
 Questo documento definisce i ruoli (Actors/Agents) previsti all'interno del sistema Calendario. In ottica YAGNI e GDPR, il sistema di permessi divide l'accesso in visualizzazione anonima, visualizzazione protetta e gestione.
 
+## 0. Sviluppatore / CI-CD Pipeline (DevOps)
+Non è un utente del sistema, ma l'entità che gestisce l'infrastruttura.
+* **Gestione Database:** Nessun intervento manuale in produzione. Le modifiche allo schema (es. aggiunta tabelle) avvengono prima su un **Branch di Neon** (ambiente di dev) e tradotte in script **Alembic**. La pipeline applicherà automaticamente le migrazioni (`alembic upgrade head`) al DB di produzione durante il deploy.
+
 ## 1. Visitatore Anonimo (Non Autenticato)
 Rappresenta un utente che naviga sul calendario senza effettuare il login.
 

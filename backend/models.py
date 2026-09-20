@@ -11,9 +11,8 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    username = Column(String, nullable=False, unique=True, index=True)
-    password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False, default="teacher")
+    email = Column(String, nullable=False, unique=True, index=True)
+    role = Column(String, nullable=False, default="admin")
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.datetime.now(datetime.timezone.utc),
@@ -22,8 +21,8 @@ class User(Base):
 
 @event.listens_for(User, 'before_delete')
 def receive_before_delete(mapper, connection, target):
-    if target.username == "segreteria":
-        raise ValueError("Impossibile eliminare l'utente base 'segreteria'.")
+    if target.email == "admin@scuola.com":
+        raise ValueError("Impossibile eliminare l'amministratore base.")
 
 
 class Teacher(Base):
