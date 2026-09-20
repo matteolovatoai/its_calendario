@@ -5,6 +5,7 @@ import { Lesson } from '@/types';
 import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Lock } from 'lucide-react';
 
 const START_HOUR = 8;
 const END_HOUR = 18;
@@ -193,7 +194,15 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
                       zIndex: 5,
                     }}
                   >
-                    <div className="font-bold truncate leading-tight">{lesson.teacher.name}</div>
+                    <div className="font-bold truncate leading-tight flex items-center gap-1">
+                      {lesson.teacher ? (
+                        lesson.teacher.name
+                      ) : (
+                        <span className="flex items-center text-blue-600/80 dark:text-blue-300/80 text-[10px] sm:text-xs italic">
+                          <Lock className="w-3 h-3 mr-0.5 inline-block" /> Riservato
+                        </span>
+                      )}
+                    </div>
                     <div className="truncate mt-0.5 sm:mt-1 opacity-90">{lesson.subject.name}</div>
                     <div className="text-blue-700 dark:text-blue-300 truncate mt-auto">{lesson.room.name}</div>
                   </div>
