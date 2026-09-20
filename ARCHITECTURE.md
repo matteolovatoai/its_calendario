@@ -12,13 +12,14 @@
 * **Configurazione**: `pydantic-settings` (Licenza MIT) - Gestione tipizzata delle variabili d'ambiente.
 * **Database ORM & Migrations**: `SQLAlchemy` (ORM) + `Alembic` (Migrazioni) + `psycopg` (Licenze MIT).
 * **Database Engine**: PostgreSQL hostato su **Neon** (Serverless, scalabile, facile migrazione locale).
-* **Autenticazione**: `PyJWT` (Licenza MIT) e `passlib` (con `bcrypt`) per JWT e hashing password. Autenticazione basata su tabella `users` nel database (con un utente base di amministrazione pre-inserito).
+* **Autenticazione**: Delegata a **Google OAuth / NextAuth** sul frontend. Il backend riceve e valida il JWT, verificando il dominio dell'email e i ruoli nel DB (RBAC). Nessuna gestione locale delle password.
 
 ### Frontend (TypeScript / React)
 * **Framework**: Next.js (App Router) (Licenza MIT).
+* **Autenticazione**: Auth.js / NextAuth (Provider Google Workspace).
 * **Styling**: Tailwind CSS (Licenza MIT).
-* **Componenti UI**: shadcn/ui (Licenza MIT) - Componenti copiati localmente, nessuna dipendenza pesante aggiunta. Non useremo librerie di calendari esterne pesanti (es. react-big-calendar), ma una semplice griglia CSS (CSS Grid).
-* **Data Fetching**: Fetch API nativa di Next.js o SWR/React Query se strettamente necessario.
+* **Componenti UI**: shadcn/ui (Licenza MIT) - Componenti copiati localmente. Griglia CSS nativa per il calendario (nessuna libreria esterna pesante).
+* **Data Fetching**: Fetch API nativa di Next.js o SWR/React Query.
 
 ---
 
@@ -26,13 +27,11 @@
 
 **Contesto MVP (v1.0):** Il sistema gestisce il calendario di **una singola classe**. 
 
-Per minimizzare la probabilità di inconsistenze, il modello implementa la normalizzazione delle entità (già presente in `models.py`). 
-
 **Tabelle Anagrafiche:**
 * `teachers` (id, name)
 * `rooms` (id, name)
 * `subjects` (id, name)
-* `users` (id, username, password_hash, role)
+* `users` (id, email, role) - **Whitelist Amministratori**: Contiene solo le email del personale autorizzato a modificare il calendario (nessuna password).
 
 **Tabella Principale: `lessons`**
 | Campo | Tipo | Descrizione |
@@ -46,28 +45,28 @@ Per minimizzare la probabilità di inconsistenze, il modello implementa la norma
 
 > **Evoluzione prevista per la v2.0:** 
 > 1. Supporto a classi multiple (aggiunta di `class_id`).
-> 2. Creazione di un pannello Admin frontend dedicato per la gestione CRUD delle anagrafiche. Nella v1.0, le entità vengono create dinamicamente ("just-in-time") dal frontend durante l'inserimento della lezione.
+> 2. Creazione di un pannello Admin frontend dedicato per la gestione CRUD delle anagrafiche.
 
 ---
 
 ## API Endpoints (FastAPI)
 
-Tutti gli endpoint (eccetto GET /lessons e POST /token) sono protetti da autenticazione (richiedono header `Authorization: Bearer <token>`). Il token JWT include un claim `role`.
-L'API pubblica è protetta da un rate limiter di base per prevenire abusi.
+Le API implementano un controllo degli accessi basato sui ruoli (RBAC) e logiche di anonimizzazione dei dati (GDPR).
 
 1. **Autenticazione**
-   * `POST /api/token` -> Riceve username/password, restituisce token JWT.
+   * `POST /api/auth/google` -> Riceve il token di Google, controlla i domini/DB e restituisce il JWT interno (con ruolo `student` o `admin`).
 2. **Lezioni**
-   * `GET /api/lessons` -> Restituisce le lezioni. **Richiede** parametri query `start_date` e `end_date`.
-   * `POST /api/lessons` -> Crea una lezione. Include logica anti-sovrapposizione **globale** (essendo v1.0 per classe singola). *Protetto.*
-   * `PUT /api/lessons/{id}` -> Modifica lezione (con anti-sovrapposizione). *Protetto.*
-   * `DELETE /api/lessons/{id}` -> Elimina lezione. *Protetto.*
-3. **Anagrafiche (Accesso Protetto)**
-   * `GET / POST /api/teachers`, `rooms`, `subjects` -> API già implementate. Il frontend (tramite combobox intelligenti) invoca la POST per creare nuove voci "on the fly" se non esistono, rimandando la necessità di un pannello amministrativo dedicato alla v2.0.
+   * `GET /api/lessons` -> Restituisce le lezioni. **Endpoint ibrido**: Se chiamato senza token, oscura i dati sensibili (GDPR). Se chiamato con token valido, restituisce l'anagrafica completa.
+   * `POST /api/lessons` -> Crea una lezione (logica anti-sovrapposizione). *Protetto (solo admin).*
+   * `PUT /api/lessons/{id}` -> Modifica lezione. *Protetto (solo admin).*
+   * `DELETE /api/lessons/{id}` -> Elimina lezione. *Protetto (solo admin).*
+3. **Anagrafiche**
+   * `GET / POST /api/teachers`, `rooms`, `subjects` -> Gestite dal frontend tramite combobox per la creazione "on the fly". Le rotte POST sono protette (`admin`).
 
 ## Design Pattern del Calendario (Frontend)
-Il frontend mostrerà una griglia CSS Grid, sfruttando idealmente i React Server Components per il fetch iniziale e abbattere il tempo di caricamento.
+Il frontend mostrerà una griglia CSS Grid:
 * **Asse X (Colonne)**: 5 giorni (Lunedì - Venerdì).
-* **Asse Y (Righe)**: Orari dalle 08:00 alle 18:00. Il sistema utilizzerà slot **logici** da 15 minuti per posizionare le lezioni in modo preciso. Visivamente, le righe divisorie appariranno **solo ad ogni ora piena** (08:00, 09:00, ecc.). L'ingombro verticale totale del calendario rimarrà invariato (non si allungherà rispetto alla versione a slot orari).
-* **Posizionamento**: Le lezioni vengono posizionate sulla griglia calcolando la loro durata e orario di inizio usando le proprietà `grid-row-start` e `grid-row-end` di CSS.
-* **Timezones**: Il frontend si assicurerà di formattare e renderizzare gli orari UTC (forniti dal backend) nel corretto fuso orario locale (es. Europe/Rome).
+* **Asse Y (Righe)**: Orari dalle 08:00 alle 18:00 (slot logici da 15 minuti, linee visive orarie).
+* **Posizionamento**: Calcolato tramite le proprietà `grid-row-start` e `grid-row-end` di CSS.
+* **Timezones**: Rendering degli orari UTC formattati per il fuso locale (`Europe/Rome`).
+* **Mobile UX**: Gli eventi mostrano il testo troncato su due righe per massimizzare la leggibilità. Il click sull'evento apre un modale in sola lettura per gli utenti privi di poteri di modifica.
