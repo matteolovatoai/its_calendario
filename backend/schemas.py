@@ -62,8 +62,8 @@ class LessonCreate(LessonBase):
 
 class LessonResponse(LessonBase):
     id: UUID
-    
-    teacher: EntityResponse
+    teacher_id: UUID | None = None
+    teacher: EntityResponse | None = None
     subject: EntityResponse
     room: EntityResponse
 

@@ -3,7 +3,7 @@ from typing import Annotated
 
 import models
 import schemas
-from auth import create_access_token, get_current_user, verify_password
+from auth import create_access_token, get_current_user, get_current_user_optional
 from database import get_db
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -142,10 +142,21 @@ def create_room(
 # --- CRUD Lezioni ---
 
 
+
 @app.get("/api/lessons", response_model=list[schemas.LessonResponse])
-def get_lessons(db: Annotated[Session, Depends(get_db)]):
-    """Recupera tutte le lezioni (Accesso Pubblico per Studenti)"""
-    return db.query(models.Lesson).all()
+def get_lessons(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None
+):
+    """Recupera tutte le lezioni. Oscura il docente per i non loggati (GDPR)."""
+    lessons = db.query(models.Lesson).all()
+    
+    if not current_user:
+        for lesson in lessons:
+            lesson.teacher = None
+            lesson.teacher_id = None
+            
+    return lessons
 
 
 @app.get("/api/lessons/{lesson_id}", response_model=schemas.LessonResponse)
