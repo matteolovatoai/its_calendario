@@ -24,34 +24,50 @@
 
 ## Modello Dati (Database Schema)
 
-Per minimizzare la complessità ci sono le tabelle essenziali per gestire lezioni, anagrafiche e utenti.
+**Contesto MVP (v1.0):** Il sistema gestisce il calendario di **una singola classe**. 
 
-**Tabella: `lessons`**
+Per minimizzare la probabilità di inconsistenze, il modello implementa la normalizzazione delle entità (già presente in `models.py`). 
+
+**Tabelle Anagrafiche:**
+* `teachers` (id, name)
+* `rooms` (id, name)
+* `subjects` (id, name)
+* `users` (id, username, password_hash, role)
+
+**Tabella Principale: `lessons`**
 | Campo | Tipo | Descrizione |
 |---|---|---|
 | `id` | UUID / Integer (PK) | Identificativo univoco |
-| `start_time` | Timestamp (UTC) | Data e ora di inizio (es. 2023-10-23T08:00:00Z) |
-| `end_time` | Timestamp (UTC) | Data e ora di fine (es. 2023-10-23T10:00:00Z) |
-| `subject` | String | Materia (es. "Analisi Matematica") |
-| `teacher` | String | Nome del docente |
-| `room` | String | Aula (es. "Aula Magna") |
+| `start_time` | Timestamp (UTC) | Data e ora di inizio |
+| `end_time` | Timestamp (UTC) | Data e ora di fine |
+| `subject_id` | UUID (FK) | Riferimento alla materia |
+| `teacher_id` | UUID (FK) | Riferimento al docente |
+| `room_id` | UUID (FK) | Riferimento all'aula |
+
+> **Evoluzione prevista per la v2.0:** 
+> 1. Supporto a classi multiple (aggiunta di `class_id`).
+> 2. Creazione di un pannello Admin frontend dedicato per la gestione CRUD delle anagrafiche. Nella v1.0, le entità vengono create dinamicamente ("just-in-time") dal frontend durante l'inserimento della lezione.
 
 ---
 
 ## API Endpoints (FastAPI)
 
-Tutti gli endpoint (eccetto GET /lessons e POST /token) sono protetti da autenticazione (richiedono header `Authorization: Bearer <token>`).
+Tutti gli endpoint (eccetto GET /lessons e POST /token) sono protetti da autenticazione (richiedono header `Authorization: Bearer <token>`). Il token JWT include un claim `role`.
+L'API pubblica è protetta da un rate limiter di base per prevenire abusi.
 
 1. **Autenticazione**
    * `POST /api/token` -> Riceve username/password, restituisce token JWT.
 2. **Lezioni**
-   * `GET /api/lessons` -> Restituisce tutte le lezioni (opzionalmente filtrate per range di date). *Pubblico.*
-   * `POST /api/lessons` -> Crea una nuova lezione. *Protetto.*
-   * `PUT /api/lessons/{id}` -> Modifica una lezione esistente. *Protetto.*
-   * `DELETE /api/lessons/{id}` -> Elimina una lezione. *Protetto.*
+   * `GET /api/lessons` -> Restituisce le lezioni. **Richiede** parametri query `start_date` e `end_date`.
+   * `POST /api/lessons` -> Crea una lezione. Include logica anti-sovrapposizione **globale** (essendo v1.0 per classe singola). *Protetto.*
+   * `PUT /api/lessons/{id}` -> Modifica lezione (con anti-sovrapposizione). *Protetto.*
+   * `DELETE /api/lessons/{id}` -> Elimina lezione. *Protetto.*
+3. **Anagrafiche (Accesso Protetto)**
+   * `GET / POST /api/teachers`, `rooms`, `subjects` -> API già implementate. Il frontend (tramite combobox intelligenti) invoca la POST per creare nuove voci "on the fly" se non esistono, rimandando la necessità di un pannello amministrativo dedicato alla v2.0.
 
 ## Design Pattern del Calendario (Frontend)
-Il frontend mostrerà una griglia statica CSS Grid.
+Il frontend mostrerà una griglia CSS Grid, sfruttando idealmente i React Server Components per il fetch iniziale e abbattere il tempo di caricamento.
 * **Asse X (Colonne)**: 5 giorni (Lunedì - Venerdì).
-* **Asse Y (Righe)**: Orari dalle 08:00 alle 18:00 (divisi in slot da 1 ora).
-* **Posizionamento**: Le lezioni vengono posizionate sulla griglia calcolando la loro durata e orario di inizio usando le proprietà `grid-row-start` e `grid-row-end` di CSS, senza pesanti librerie esterne.
+* **Asse Y (Righe)**: Orari dalle 08:00 alle 18:00. Il sistema utilizzerà slot **logici** da 15 minuti per posizionare le lezioni in modo preciso. Visivamente, le righe divisorie appariranno **solo ad ogni ora piena** (08:00, 09:00, ecc.). L'ingombro verticale totale del calendario rimarrà invariato (non si allungherà rispetto alla versione a slot orari).
+* **Posizionamento**: Le lezioni vengono posizionate sulla griglia calcolando la loro durata e orario di inizio usando le proprietà `grid-row-start` e `grid-row-end` di CSS.
+* **Timezones**: Il frontend si assicurerà di formattare e renderizzare gli orari UTC (forniti dal backend) nel corretto fuso orario locale (es. Europe/Rome).

@@ -21,6 +21,7 @@ Le credenziali di "Segreteria" (e dei futuri account admin) risiedono in una tab
 * Tutte le capacità dello Studente.
 * Effettuare il login (ricevendo un JWT).
 * Cliccare "+ Aggiungi Lezione" per inserire un nuovo blocco.
+* **Creare "on the fly" nuove anagrafiche (Docenti, Aule, Materie)** digitandole direttamente nel modale della lezione, senza usare pannelli amministrativi dedicati.
 * Cliccare su una lezione esistente per aprire il modale in modalità modifica.
 * Salvare o eliminare una lezione.
 * **Accesso API:** Accesso completo agli endpoint POST, PUT, DELETE.
