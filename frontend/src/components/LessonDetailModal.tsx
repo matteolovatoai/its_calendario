@@ -43,34 +43,34 @@ export default function LessonDetailModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl font-bold leading-snug">
+          <DialogTitle className="text-xl sm:text-2xl font-bold leading-snug">
             {lesson.subject.name}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3 py-2 text-sm">
+        <div className="flex flex-col gap-3.5 py-3 text-base">
           {/* Data */}
-          <div className="flex items-center gap-2.5 text-foreground">
-            <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-            <span>{formattedDate}</span>
+          <div className="flex items-center gap-3 text-foreground">
+            <Calendar className="w-5 h-5 text-muted-foreground shrink-0" />
+            <span className="font-medium">{formattedDate}</span>
           </div>
 
           {/* Fascia Oraria */}
-          <div className="flex items-center gap-2.5 text-foreground">
-            <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
-            <span className="font-medium">{timeRange}</span>
+          <div className="flex items-center gap-3 text-foreground">
+            <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
+            <span className="font-semibold">{timeRange}</span>
           </div>
 
           {/* Aula */}
-          <div className="flex items-center gap-2.5 text-foreground">
-            <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-3 text-foreground">
+            <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
             <span>{lesson.room.name}</span>
           </div>
 
           {/* Docente (omesso se null per conformità GDPR / visitatori non autenticati) */}
           {lesson.teacher && (
-            <div className="flex items-center gap-2.5 text-foreground">
-              <User className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div className="flex items-center gap-3 text-foreground">
+              <User className="w-5 h-5 text-muted-foreground shrink-0" />
               <span>{lesson.teacher.name}</span>
             </div>
           )}

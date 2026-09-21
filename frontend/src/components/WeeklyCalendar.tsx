@@ -237,7 +237,7 @@ export default function WeeklyCalendar({
                           setSelectedDetailLesson(lesson);
                         }
                       }}
-                      className="m-0.5 p-1.5 sm:p-2 rounded-md border text-xs overflow-hidden flex flex-col shadow-sm transition-all cursor-pointer hover:ring-1 hover:ring-primary/40 hover:shadow-md bg-blue-50/90 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100"
+                      className="m-0.5 p-2 sm:p-2.5 rounded-md border overflow-hidden flex flex-col shadow-sm transition-all cursor-pointer hover:ring-1 hover:ring-primary/40 hover:shadow-md bg-blue-50/90 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100"
                       style={{
                         gridRowStart: pos.gridRowStart,
                         gridRowEnd: pos.gridRowEnd,
@@ -246,19 +246,19 @@ export default function WeeklyCalendar({
                       }}
                     >
                       {/* Testata: Fascia oraria e Aula */}
-                      <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-blue-700 dark:text-blue-300 font-medium tracking-tight mb-0.5 shrink-0">
-                        <span>{timeRange}</span>
-                        <span className="truncate ml-1 font-semibold">{lesson.room.name}</span>
+                      <div className="flex items-center justify-between text-xs sm:text-sm text-blue-700 dark:text-blue-300 font-medium tracking-tight mb-1 shrink-0">
+                        <span className="font-semibold">{timeRange}</span>
+                        <span className="truncate ml-1.5 font-bold">{lesson.room.name}</span>
                       </div>
 
                       {/* Materia: Titolo in grassetto con supporto a 2 righe (line-clamp-2) */}
-                      <div className="font-bold text-xs sm:text-sm text-foreground leading-snug line-clamp-2">
+                      <div className="font-bold text-sm sm:text-base text-foreground leading-snug line-clamp-2">
                         {lesson.subject.name}
                       </div>
 
                       {/* Docente: mostrato solo se presente (omesso silenziosamente se null per GDPR) */}
                       {lesson.teacher && (
-                        <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+                        <div className="text-xs sm:text-sm text-muted-foreground font-medium truncate mt-1">
                           {lesson.teacher.name}
                         </div>
                       )}
