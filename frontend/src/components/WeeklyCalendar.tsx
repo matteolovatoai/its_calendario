@@ -123,155 +123,160 @@ export default function WeeklyCalendar({
 
   return (
     <>
-      <div className="flex flex-col border border-border rounded-xl bg-card shadow-sm text-card-foreground">
+      <div className="flex flex-col border border-border rounded-xl bg-card shadow-sm text-card-foreground w-full">
         {/* Navbar Settimana */}
-        <div className="flex items-center justify-between p-4 border-b border-border bg-muted/50 rounded-t-xl">
-          <Button variant="outline" size="sm" onClick={goPrevWeek}>
-            &larr; Precedente
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/50 rounded-t-xl">
+          <Button variant="outline" size="sm" onClick={goPrevWeek} className="px-2 sm:px-3 text-xs sm:text-sm">
+            &larr; <span className="hidden sm:inline ml-1">Precedente</span>
           </Button>
           <span
             onClick={goToday}
-            className="font-semibold text-lg capitalize cursor-pointer hover:text-primary transition-colors hover:underline decoration-primary/50 underline-offset-4"
+            className="font-semibold text-base sm:text-lg capitalize cursor-pointer hover:text-primary transition-colors hover:underline decoration-primary/50 underline-offset-4 text-center truncate mx-2"
             title="Torna a oggi"
           >
             {monthName}
           </span>
-          <Button variant="outline" size="sm" onClick={goNextWeek}>
-            Successiva &rarr;
+          <Button variant="outline" size="sm" onClick={goNextWeek} className="px-2 sm:px-3 text-xs sm:text-sm">
+            <span className="hidden sm:inline mr-1">Successiva</span> &rarr;
           </Button>
         </div>
 
-        {/* Contenitore con scroll orizzontale per mobile */}
-        <div className="overflow-x-auto">
-          <div className="min-w-[350px]">
-            {/* Header Giorni */}
-            <div className="grid grid-cols-[50px_1fr_1fr_1fr_1fr_1fr] sm:grid-cols-[60px_1fr_1fr_1fr_1fr_1fr] border-b border-border bg-muted/50">
-              <div className="p-1 sm:p-2 border-r border-border flex items-center justify-center text-[10px] sm:text-xs font-semibold text-muted-foreground">
-                Ora
-              </div>
-              {daysOfWeek.map((date, i) => (
+        {/* Griglia Calendario (visibile per intero senza scroll orizzontale) */}
+        <div className="w-full">
+          {/* Header Giorni */}
+          <div className="grid grid-cols-[42px_repeat(5,1fr)] sm:grid-cols-[60px_repeat(5,1fr)] border-b border-border bg-muted/50">
+            <div className="p-1 sm:p-2 border-r border-border flex items-center justify-center text-[10px] sm:text-xs font-semibold text-muted-foreground">
+              Ora
+            </div>
+            {daysOfWeek.map((date, i) => {
+              const isToday = date.toDateString() === new Date().toDateString();
+              return (
                 <div
                   key={i}
-                  className="p-2 text-center border-r border-border last:border-r-0 flex flex-col items-center justify-center"
+                  className={`p-1.5 sm:p-2 text-center border-r border-border last:border-r-0 flex flex-col items-center justify-center ${
+                    isToday ? 'bg-primary/5 dark:bg-primary/10' : ''
+                  }`}
                 >
-                  <span className="text-sm font-semibold text-foreground hidden sm:block">
+                  <span className={`text-xs sm:text-sm font-semibold hidden sm:block ${isToday ? 'text-primary' : 'text-foreground'}`}>
                     {DAY_NAMES[i]} {date.getDate()}
                   </span>
-                  <span className="text-sm font-semibold text-foreground sm:hidden">
+                  <span className={`text-xs sm:text-sm font-semibold sm:hidden ${isToday ? 'text-primary' : 'text-foreground'}`}>
                     {DAY_INITIALS[i]} {date.getDate()}
                   </span>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Body Calendario */}
+          <div className="flex h-[calc(100vh-220px)] min-h-[440px] max-h-[850px] py-2 sm:py-4">
+            {/* Etichette Orarie */}
+            <div className="w-[42px] sm:w-[60px] shrink-0 border-r border-border bg-card relative">
+              {HOURS.slice(0, -1).map((hour, idx) => (
+                <div
+                  key={hour}
+                  className="absolute w-full text-[10px] sm:text-xs text-muted-foreground text-center -translate-y-1/2"
+                  style={{ top: `${(idx / (HOURS.length - 1)) * 100}%` }}
+                >
+                  {hour.toString().padStart(2, '0')}:00
+                </div>
               ))}
+              <div
+                className="absolute w-full text-[10px] sm:text-xs text-muted-foreground text-center -translate-y-1/2"
+                style={{ top: '100%' }}
+              >
+                {END_HOUR.toString().padStart(2, '0')}:00
+              </div>
             </div>
 
-            {/* Body Calendario */}
-            <div className="flex h-[calc(100vh-200px)] min-h-[400px] max-h-[800px] py-4">
-              {/* Etichette Orarie */}
-              <div className="w-[50px] sm:w-[60px] shrink-0 border-r border-border bg-card relative">
-                {HOURS.slice(0, -1).map((hour, idx) => (
+            {/* Griglia Lezioni (5 colonne a larghezza proporzionale) */}
+            <div
+              className="flex-1 grid grid-cols-5 relative"
+              style={{
+                gridTemplateRows: `repeat(${(END_HOUR - START_HOUR) * 60}, 1fr)`,
+              }}
+            >
+              {/* Linee verticali */}
+              <div className="absolute inset-0 grid grid-cols-5 pointer-events-none">
+                {DAY_NAMES.map((_, i) => (
                   <div
-                    key={hour}
-                    className="absolute w-full text-xs text-muted-foreground text-center -translate-y-1/2"
-                    style={{ top: `${(idx / (HOURS.length - 1)) * 100}%` }}
-                  >
-                    {hour.toString().padStart(2, '0')}:00
-                  </div>
+                    key={`col-${i}`}
+                    className="border-r border-border last:border-r-0 h-full"
+                  />
                 ))}
-                <div
-                  className="absolute w-full text-xs text-muted-foreground text-center -translate-y-1/2"
-                  style={{ top: '100%' }}
-                >
-                  {END_HOUR.toString().padStart(2, '0')}:00
-                </div>
               </div>
 
-              {/* Griglia Lezioni */}
+              {/* Linee orizzontali */}
               <div
-                className="flex-1 grid grid-cols-5 relative"
+                className="absolute inset-0 grid pointer-events-none"
                 style={{
-                  gridTemplateRows: `repeat(${(END_HOUR - START_HOUR) * 60}, 1fr)`,
+                  gridTemplateRows: `repeat(${END_HOUR - START_HOUR}, 1fr)`,
                 }}
               >
-                {/* Linee verticali */}
-                <div className="absolute inset-0 grid grid-cols-5 pointer-events-none">
-                  {DAY_NAMES.map((_, i) => (
-                    <div
-                      key={`col-${i}`}
-                      className="border-r border-border last:border-r-0 h-full"
-                    />
-                  ))}
-                </div>
-
-                {/* Linee orizzontali */}
-                <div
-                  className="absolute inset-0 grid pointer-events-none"
-                  style={{
-                    gridTemplateRows: `repeat(${END_HOUR - START_HOUR}, 1fr)`,
-                  }}
-                >
-                  {Array.from({ length: END_HOUR - START_HOUR }).map((_, i) => (
-                    <div
-                      key={`row-${i}`}
-                      className={`border-b border-border/50 w-full ${i === 0 ? 'border-t' : ''}`}
-                    />
-                  ))}
-                </div>
-
-                {/* Blocchi Lezioni */}
-                {weekLessons.map((lesson) => {
-                  const pos = getGridPosition(lesson);
-                  if (!pos) return null;
-
-                  const start = new Date(lesson.start_time);
-                  const end = new Date(lesson.end_time);
-                  const pad = (n: number) => n.toString().padStart(2, '0');
-                  const timeRange = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(end.getHours())}:${pad(end.getMinutes())}`;
-
-                  return (
-                    <div
-                      key={lesson.id}
-                      onClick={() => {
-                        if (isAdmin) {
-                          onLessonEdit?.(lesson);
-                        } else {
-                          setSelectedDetailLesson(lesson);
-                        }
-                      }}
-                      className="m-0.5 p-2 sm:p-2.5 rounded-md border overflow-hidden flex flex-col shadow-sm transition-all cursor-pointer hover:ring-1 hover:ring-primary/40 hover:shadow-md bg-blue-50/90 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100"
-                      style={{
-                        gridRowStart: pos.gridRowStart,
-                        gridRowEnd: pos.gridRowEnd,
-                        gridColumn: pos.gridColumn,
-                        zIndex: 5,
-                      }}
-                    >
-                      {/* Testata: Fascia oraria e Aula */}
-                      <div className="flex items-center justify-between text-xs sm:text-sm text-blue-700 dark:text-blue-300 font-medium tracking-tight mb-1 shrink-0">
-                        <span className="font-semibold">{timeRange}</span>
-                        <span className="truncate ml-1.5 font-bold">{lesson.room.name}</span>
-                      </div>
-
-                      {/* Materia: Titolo in grassetto con supporto a 2 righe (line-clamp-2) */}
-                      <div className="font-bold text-sm sm:text-base text-foreground leading-snug line-clamp-2">
-                        {lesson.subject.name}
-                      </div>
-
-                      {/* Docente: mostrato solo se presente (omesso silenziosamente se null per GDPR) */}
-                      {lesson.teacher && (
-                        <div className="text-xs sm:text-sm text-muted-foreground font-medium truncate mt-1">
-                          {lesson.teacher.name}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {Array.from({ length: END_HOUR - START_HOUR }).map((_, i) => (
+                  <div
+                    key={`row-${i}`}
+                    className={`border-b border-border/50 w-full ${i === 0 ? 'border-t' : ''}`}
+                  />
+                ))}
               </div>
+
+              {/* Blocchi Lezioni */}
+              {weekLessons.map((lesson) => {
+                const pos = getGridPosition(lesson);
+                if (!pos) return null;
+
+                const start = new Date(lesson.start_time);
+                const end = new Date(lesson.end_time);
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                const timeRange = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(end.getHours())}:${pad(end.getMinutes())}`;
+
+                return (
+                  <div
+                    key={lesson.id}
+                    onClick={() => {
+                      if (isAdmin) {
+                        onLessonEdit?.(lesson);
+                      } else {
+                        setSelectedDetailLesson(lesson);
+                      }
+                    }}
+                    className="m-0.5 p-1 sm:p-2 rounded-md border overflow-hidden flex flex-col shadow-sm transition-all cursor-pointer hover:ring-1 hover:ring-primary/40 hover:shadow-md bg-blue-50/90 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100"
+                    style={{
+                      gridRowStart: pos.gridRowStart,
+                      gridRowEnd: pos.gridRowEnd,
+                      gridColumn: pos.gridColumn,
+                      zIndex: 5,
+                    }}
+                  >
+                    {/* Aula in evidenza (a tutta larghezza su mobile, con orario visibile solo su schermi grandi) */}
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs text-blue-700 dark:text-blue-300 font-bold tracking-tight mb-0.5 shrink-0">
+                      <span className="truncate">{lesson.room.name}</span>
+                      <span className="hidden md:inline font-normal text-muted-foreground text-[10px] ml-1 shrink-0">
+                        {timeRange}
+                      </span>
+                    </div>
+
+                    {/* Materia: Titolo chiaro e leggibile con line-clamp-2 */}
+                    <div className="font-bold text-[11px] sm:text-xs text-foreground leading-tight line-clamp-2">
+                      {lesson.subject.name}
+                    </div>
+
+                    {/* Docente: mostrato se presente (GDPR) */}
+                    {lesson.teacher && (
+                      <div className="text-[9px] sm:text-[11px] text-muted-foreground font-medium truncate mt-0.5">
+                        {lesson.teacher.name}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modale dettagli sola lettura per visitatori e studenti */}
+      {/* Modale dettagli sola lettura per visitatori e studenti (mostra orario completo, docente, aula e materia) */}
       <LessonDetailModal
         isOpen={!!selectedDetailLesson}
         onClose={() => setSelectedDetailLesson(null)}
