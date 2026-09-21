@@ -10,12 +10,19 @@ def verify_google_token(token: str):
     from google.auth.transport import requests
     from google.oauth2 import id_token
 
+    if not settings.GOOGLE_CLIENT_ID:
+        print("❌ [Auth] settings.GOOGLE_CLIENT_ID è vuoto o non impostato nelle variabili d'ambiente!")
+
     try:
         id_info = id_token.verify_oauth2_token(
             token, requests.Request(), settings.GOOGLE_CLIENT_ID
         )
         return id_info
-    except ValueError:
+    except ValueError as e:
+        print(f"❌ [Auth] verify_google_token ValueError: {e}")
+        return None
+    except Exception as e:
+        print(f"❌ [Auth] verify_google_token Errore imprevisto: {e}")
         return None
 
 

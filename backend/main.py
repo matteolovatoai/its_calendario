@@ -63,8 +63,6 @@ async def login_google(
         (
             "@allievi.itsdigitalacademy.com",
             "@itsdigitalacademy.com",
-            "@allievi.scuola.com",
-            "@scuola.com",
         )
     ):
         role = "student"

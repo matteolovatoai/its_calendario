@@ -2,7 +2,7 @@ import datetime
 import uuid
 
 from database import Base
-from sqlalchemy import Column, DateTime, ForeignKey, String, event
+from sqlalchemy import Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -17,12 +17,6 @@ class User(Base):
         DateTime(timezone=True),
         default=lambda: datetime.datetime.now(datetime.timezone.utc),
     )
-
-
-@event.listens_for(User, "before_delete")
-def receive_before_delete(mapper, connection, target):
-    if target.email == "admin@scuola.com":
-        raise ValueError("Impossibile eliminare l'amministratore base.")
 
 
 class Teacher(Base):

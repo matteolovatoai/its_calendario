@@ -44,11 +44,11 @@ test_data = {}
 
 
 def mock_admin():
-    return {"email": "admin@scuola.com", "role": "admin"}
+    return {"email": "admin@itsdigitalacademy.com", "role": "admin"}
 
 
 def mock_student():
-    return {"email": "studente@allievi.scuola.com", "role": "student"}
+    return {"email": "studente@allievi.itsdigitalacademy.com", "role": "student"}
 
 
 def test_admin_can_create_anagrafiche():
