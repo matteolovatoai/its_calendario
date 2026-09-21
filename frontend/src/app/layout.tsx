@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/components/theme-provider";
+import AuthSessionProvider from "@/components/SessionProvider";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -34,9 +35,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthSessionProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </AuthSessionProvider>
         </ThemeProvider>
       </body>
     </html>

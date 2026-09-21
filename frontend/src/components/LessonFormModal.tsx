@@ -177,7 +177,7 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
 
       setFormData({
         subject_id: lesson.subject.id,
-        teacher_id: lesson.teacher.id,
+        teacher_id: lesson.teacher?.id || '',
         room_id: lesson.room.id,
         date: dateStr,
         start_time: startStr,
