@@ -8,6 +8,7 @@ import { Lesson } from '@/types';
 import { signIn } from 'next-auth/react';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import Link from 'next/link';
 
 export default function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -53,6 +54,14 @@ export default function HomePage() {
       </div>
 
       <WeeklyCalendar onLessonEdit={handleEditLesson} refreshTrigger={refreshTrigger} />
+
+      <footer className="mt-2 py-1 text-center text-xs text-muted-foreground shrink-0 flex justify-center items-center gap-3">
+        <span>ITS Digital Academy</span>
+        <span>•</span>
+        <Link href="/privacy-policy" className="hover:underline hover:text-foreground transition-colors">
+          Privacy Policy
+        </Link>
+      </footer>
 
       {isAdmin && (
         <LessonFormModal
