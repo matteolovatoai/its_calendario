@@ -76,7 +76,7 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
             <li>Consentire l&apos;accesso sicuro e autenticato al calendario scolastico.</li>
-            <li>Distinguere i ruoli di accesso (consultazione protetta per gli studenti, gestione e modifica lezioni per la segreteria autorizzata).</li>
+            <li>Distinguere i ruoli di accesso (consultazione protetta per gli studenti, gestione e modifica lezioni per gli amministratori autorizzati).</li>
             <li>Garantire il corretto funzionamento tecnico e la sicurezza del servizio.</li>
           </ul>
           <p className="text-muted-foreground leading-relaxed">
