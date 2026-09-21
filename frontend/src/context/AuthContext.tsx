@@ -7,12 +7,15 @@ interface AuthUser {
   name?: string | null;
   email?: string | null;
   image?: string | null;
+  role?: string;
 }
 
 interface AuthContextType {
   token: string | null;
   logout: () => void;
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  role: string | null;
   user: AuthUser | null;
 }
 
@@ -25,13 +28,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut();
   };
 
+  const user = session?.user as AuthUser | undefined;
+  const role = user?.role || null;
+  const isAdmin = role === 'admin';
+  const token =
+    (session as unknown as { accessToken?: string })?.accessToken || null;
+
   return (
     <AuthContext.Provider
       value={{
-        token: null,
+        token,
         logout,
         isAuthenticated: status === 'authenticated',
-        user: session?.user || null,
+        isAdmin,
+        role,
+        user: user || null,
       }}
     >
       {children}

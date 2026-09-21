@@ -26,7 +26,7 @@ function getMonday(d: Date) {
 export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { onLessonEdit?: (lesson: Lesson) => void, refreshTrigger?: number }) {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAuthenticated } = useAuth();
+  const { isAdmin } = useAuth();
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
 
   useEffect(() => {
@@ -181,10 +181,10 @@ export default function WeeklyCalendar({ onLessonEdit, refreshTrigger = 0 }: { o
                 return (
                   <div
                     key={lesson.id}
-                    onClick={() => isAuthenticated && onLessonEdit?.(lesson)}
+                    onClick={() => isAdmin && onLessonEdit?.(lesson)}
                     className={`
                       m-0.5 p-1.5 sm:p-2 rounded-md border text-xs overflow-hidden flex flex-col shadow-sm transition-colors
-                      ${isAuthenticated ? 'cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:border-blue-300 dark:hover:border-blue-600' : ''}
+                      ${isAdmin ? 'cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:border-blue-300 dark:hover:border-blue-600' : ''}
                       bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100
                     `}
                     style={{

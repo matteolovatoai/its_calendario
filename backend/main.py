@@ -46,16 +46,11 @@ async def login_google(
     if not email:
         raise HTTPException(status_code=400, detail="Email mancante nel token")
 
-    role = "student"
-    if email.endswith("@allievi.scuola.com"):
+    user_in_db = db.query(models.User).filter(models.User.email == email).first()
+    if user_in_db:
+        role = user_in_db.role
+    elif email.endswith(("@allievi.scuola.com", "@scuola.com")):
         role = "student"
-    elif email.endswith("@scuola.com"):
-        user_in_db = db.query(models.User).filter(models.User.email == email).first()
-        if user_in_db:
-            role = "admin"
-        else:
-            role = "student"  # Default per @scuola.com non in whitelist, come da task (o eccezione 403?)
-            # Wait, the issue says: "Se @scuola.com -> verifica se l'email esiste... Se sì, ruolo admin, altrimenti ruolo student."
     else:
         raise HTTPException(status_code=403, detail="Dominio non autorizzato")
 

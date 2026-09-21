@@ -5,7 +5,8 @@ import WeeklyCalendar from '@/components/WeeklyCalendar';
 import LessonFormModal from '@/components/LessonFormModal';
 import { Button } from '@/components/ui/button';
 import { Lesson } from '@/types';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function HomePage() {
@@ -13,15 +14,16 @@ export default function HomePage() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const { status } = useSession();
-  const isAuthenticated = status === 'authenticated';
+  const { isAuthenticated, isAdmin, logout } = useAuth();
 
   const handleAddLesson = () => {
+    if (!isAdmin) return;
     setSelectedLesson(null);
     setModalOpen(true);
   };
 
   const handleEditLesson = (lesson: Lesson) => {
+    if (!isAdmin) return;
     setSelectedLesson(lesson);
     setModalOpen(true);
   };
@@ -39,8 +41,8 @@ export default function HomePage() {
           <ThemeToggle />
           {isAuthenticated ? (
             <>
-              <Button onClick={handleAddLesson}>+ Nuova Lezione</Button>
-              <Button variant="outline" onClick={() => signOut()}>
+              {isAdmin && <Button onClick={handleAddLesson}>+ Nuova Lezione</Button>}
+              <Button variant="outline" onClick={logout}>
                 Logout
               </Button>
             </>
@@ -52,7 +54,7 @@ export default function HomePage() {
 
       <WeeklyCalendar onLessonEdit={handleEditLesson} refreshTrigger={refreshTrigger} />
 
-      {isAuthenticated && (
+      {isAdmin && (
         <LessonFormModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
