@@ -12,6 +12,9 @@ venv/
 env/
 pip-log.txt
 pip-delete-this-directory.txt
+*.db
+*.sqlite
+*.sqlite3
 
 # Next.js / Node.js
 node_modules/

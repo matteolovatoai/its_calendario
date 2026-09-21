@@ -58,3 +58,11 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         return {"email": email, "role": role}
     except jwt.PyJWTError:
         raise credentials_exception
+
+async def get_current_admin(current_user: Annotated[dict, Depends(get_current_user)]):
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operazione consentita solo agli amministratori",
+        )
+    return current_user

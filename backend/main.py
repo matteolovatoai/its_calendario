@@ -3,7 +3,7 @@ from typing import Annotated
 
 import models
 import schemas
-from auth import create_access_token, get_current_user, get_current_user_optional
+from auth import create_access_token, get_current_user, get_current_user_optional, get_current_admin
 from database import get_db
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -72,7 +72,10 @@ def protected_route(current_user: Annotated[dict, Depends(get_current_user)]):
 
 
 @app.get("/api/teachers", response_model=list[schemas.EntityResponse])
-def get_teachers(db: Annotated[Session, Depends(get_db)]):
+def get_teachers(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[dict, Depends(get_current_user)],
+):
     return db.query(models.Teacher).all()
 
 
@@ -83,7 +86,7 @@ def get_teachers(db: Annotated[Session, Depends(get_db)]):
 )
 def create_teacher(
     teacher: schemas.EntityCreate,
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_admin: Annotated[dict, Depends(get_current_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
     db_teacher = models.Teacher(**teacher.model_dump())
@@ -94,7 +97,10 @@ def create_teacher(
 
 
 @app.get("/api/subjects", response_model=list[schemas.EntityResponse])
-def get_subjects(db: Annotated[Session, Depends(get_db)]):
+def get_subjects(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[dict, Depends(get_current_user)],
+):
     return db.query(models.Subject).all()
 
 
@@ -105,7 +111,7 @@ def get_subjects(db: Annotated[Session, Depends(get_db)]):
 )
 def create_subject(
     subject: schemas.EntityCreate,
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_admin: Annotated[dict, Depends(get_current_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
     db_subject = models.Subject(**subject.model_dump())
@@ -116,7 +122,10 @@ def create_subject(
 
 
 @app.get("/api/rooms", response_model=list[schemas.EntityResponse])
-def get_rooms(db: Annotated[Session, Depends(get_db)]):
+def get_rooms(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[dict, Depends(get_current_user)],
+):
     return db.query(models.Room).all()
 
 
@@ -127,7 +136,7 @@ def get_rooms(db: Annotated[Session, Depends(get_db)]):
 )
 def create_room(
     room: schemas.EntityCreate,
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_admin: Annotated[dict, Depends(get_current_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
     db_room = models.Room(**room.model_dump())
@@ -160,12 +169,22 @@ def get_lessons(
 
 
 @app.get("/api/lessons/{lesson_id}", response_model=schemas.LessonResponse)
-def get_lesson(lesson_id: uuid.UUID, db: Annotated[Session, Depends(get_db)]):
+def get_lesson(
+    lesson_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
+):
     """Recupera singola lezione (Accesso Pubblico per Studenti)"""
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lezione non trovata")
-    return lesson
+    
+    lesson_dto = schemas.LessonResponse.model_validate(lesson)
+    if not current_user:
+        lesson_dto.teacher = None
+        lesson_dto.teacher_id = None
+        
+    return lesson_dto
 
 
 @app.post(
@@ -175,7 +194,7 @@ def get_lesson(lesson_id: uuid.UUID, db: Annotated[Session, Depends(get_db)]):
 )
 def create_lesson(
     lesson: schemas.LessonCreate,
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_admin: Annotated[dict, Depends(get_current_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Crea una nuova lezione (Solo Segreteria)"""
@@ -207,7 +226,7 @@ def create_lesson(
 def update_lesson(
     lesson_id: uuid.UUID,
     lesson_update: schemas.LessonCreate,
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_admin: Annotated[dict, Depends(get_current_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Modifica una lezione esistente (Solo Segreteria)"""
@@ -248,7 +267,7 @@ def update_lesson(
 @app.delete("/api/lessons/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_lesson(
     lesson_id: uuid.UUID,
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_admin: Annotated[dict, Depends(get_current_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Elimina una lezione (Solo Segreteria)"""
