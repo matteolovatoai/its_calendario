@@ -7,13 +7,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import SessionLocal
 from models import User
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
 
 def add_user(email: str, role: str = "admin"):
     db = SessionLocal()
     try:
-        existing = db.query(User).filter(User.email == email).first()
+        email = email.strip().lower()
+        existing = db.query(User).filter(func.lower(User.email) == email).first()
         if existing:
             print(f"ℹ️ L'utente '{email}' esiste già con ruolo: {existing.role}")
             return existing

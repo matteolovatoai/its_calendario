@@ -11,6 +11,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
   trustHost: true,
   callbacks: {
+    async signIn({ account }) {
+      if (account?.provider === "google" && account.id_token) {
+        try {
+          const apiUrl =
+            process.env.INTERNAL_API_URL ||
+            process.env.NEXT_PUBLIC_API_URL ||
+            "http://127.0.0.1:8000";
+
+          const res = await fetch(`${apiUrl}/api/auth/google`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: account.id_token }),
+          });
+
+          return res.ok;
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
     async jwt({ token, account }) {
       // Al primo login con Google, scambia il token con il backend
       if (account?.id_token) {

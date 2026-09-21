@@ -16,7 +16,7 @@ Rappresenta un utente che naviga sul calendario senza effettuare il login.
 * **Accesso API:** Solo endpoint GET. L'API maschera i dati sensibili (es. nome del docente) restituendoli nulli o oscurati in ottemperanza al GDPR.
 
 ## 2. Studente (Utente Autenticato - Sola Lettura)
-Rappresenta uno studente che effettua il login tramite l'account Google Workspace della scuola (dominio `@allievi.scuola.com`).
+Rappresenta uno studente che effettua il login tramite l'account Google Workspace della scuola (dominio `@allievi.itsdigitalacademy.com`).
 
 **Permessi / Capacità:**
 * Tutte le capacità del Visitatore Anonimo.
@@ -25,7 +25,7 @@ Rappresenta uno studente che effettua il login tramite l'account Google Workspac
 * **Accesso API:** Solo endpoint GET completi.
 
 ## 3. Segreteria / Admin (Utente Autenticato - Lettura/Scrittura)
-Rappresenta l'operatore che gestisce l'inserimento dei dati (dominio `@scuola.com`).
+Rappresenta l'operatore che gestisce l'inserimento dei dati (dominio `@itsdigitalacademy.com`).
 
 **Implementazione:**
 Le autorizzazioni di "Segreteria" risiedono in una tabella `users` del database (Whitelist). Quando un utente del dominio corretto effettua il login con Google OAuth, il backend verifica la presenza della sua email nel database per concedere i privilegi di amministratore.
@@ -44,4 +44,4 @@ Le autorizzazioni di "Segreteria" risiedono in una tabella `users` del database 
 Idee per agenti automatizzati o ruoli futuri (Da NON sviluppare ora).
 
 * **Parser Excel (Worker Agent)**: Un servizio di background che carica il file Excel della scuola, ne normalizza i dati ed effettua chiamate POST per popolare massivamente il calendario.
-* **Docente (Ruolo Parziale)**: In futuro si potrebbe creare un ruolo intermedio (es. per chi ha `@scuola.com` ma non è admin) che può modificare *solo* le proprie lezioni. Attualmente scartato (YAGNI).
+* **Docente (Ruolo Parziale)**: In futuro si potrebbe creare un ruolo intermedio (es. per chi ha `@itsdigitalacademy.com` ma non è admin) che può modificare *solo* le proprie lezioni. Attualmente scartato (YAGNI).

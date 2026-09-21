@@ -28,7 +28,7 @@ function CreatableCombobox({
   emptyMessage: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState('');
 
   const selectedItem = items.find((item) => item.id === value);
   const exactMatch = items.some((item) => item.name.toLowerCase() === inputValue.toLowerCase());
@@ -36,16 +36,16 @@ function CreatableCombobox({
   return (
     <div>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger 
-          className={cn(buttonVariants({ variant: "outline" }), "w-full justify-between font-normal active:translate-y-0")}
+        <PopoverTrigger
+          className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-between font-normal active:translate-y-0')}
         >
           {selectedItem ? selectedItem.name : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </PopoverTrigger>
         <PopoverContent className="p-0" style={{ width: 'var(--anchor-width)' }} align="start">
           <Command>
-            <CommandInput 
-              placeholder={placeholder} 
+            <CommandInput
+              placeholder={placeholder}
               value={inputValue}
               onValueChange={setInputValue}
             />
@@ -53,17 +53,17 @@ function CreatableCombobox({
               <CommandEmpty>
                 {emptyMessage}
                 {inputValue && !exactMatch && (
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className="w-full justify-start mt-2 px-2 h-auto py-1.5"
                     onClick={() => {
                       onCreate(inputValue);
                       setOpen(false);
-                      setInputValue("");
+                      setInputValue('');
                     }}
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Crea "{inputValue}"
+                    Crea &quot;{inputValue}&quot;
                   </Button>
                 )}
               </CommandEmpty>
@@ -75,13 +75,13 @@ function CreatableCombobox({
                     onSelect={() => {
                       onSelect(item.id);
                       setOpen(false);
-                      setInputValue("");
+                      setInputValue('');
                     }}
                   >
                     <Check
                       className={cn(
-                        "mr-2 h-4 w-4",
-                        value === item.id ? "opacity-100" : "opacity-0"
+                        'mr-2 h-4 w-4',
+                        value === item.id ? 'opacity-100' : 'opacity-0'
                       )}
                     />
                     {item.name}
@@ -95,11 +95,11 @@ function CreatableCombobox({
                     onSelect={() => {
                       onCreate(inputValue);
                       setOpen(false);
-                      setInputValue("");
+                      setInputValue('');
                     }}
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Crea "{inputValue}"
+                    Crea &quot;{inputValue}&quot;
                   </CommandItem>
                 </CommandGroup>
               )}
@@ -118,87 +118,60 @@ interface LessonFormModalProps {
   onSuccess: () => void;
 }
 
-export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: LessonFormModalProps) {
-  const [formData, setFormData] = useState<{
-    subject_id: string;
-    teacher_id: string;
-    room_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-  }>({
+function getInitialFormData(lesson?: Lesson | null) {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  if (lesson) {
+    const start = new Date(lesson.start_time);
+    const end = new Date(lesson.end_time);
+    return {
+      subject_id: lesson.subject.id,
+      teacher_id: lesson.teacher?.id || '',
+      room_id: lesson.room.id,
+      date: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
+      start_time: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+      end_time: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+    };
+  }
+  const today = new Date();
+  return {
     subject_id: '',
     teacher_id: '',
     room_id: '',
-    date: '',
-    start_time: '',
-    end_time: '',
-  });
+    date: `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`,
+    start_time: '09:00',
+    end_time: '13:00',
+  };
+}
 
+function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFormModalProps) {
+  const [formData, setFormData] = useState(() => getInitialFormData(lesson));
   const [loading, setLoading] = useState(false);
-  
   const [teachers, setTeachers] = useState<Entity[]>([]);
   const [subjects, setSubjects] = useState<Entity[]>([]);
   const [rooms, setRooms] = useState<Entity[]>([]);
 
-  const loadEntities = async () => {
-    try {
-      const [t, s, r] = await Promise.all([
-        fetchApi('/api/teachers'),
-        fetchApi('/api/subjects'),
-        fetchApi('/api/rooms'),
-      ]);
-      setTeachers(t || []);
-      setSubjects(s || []);
-      setRooms(r || []);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   useEffect(() => {
-    if (isOpen) {
-      loadEntities();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (lesson) {
-      // Extract date and times from ISO strings based on local time
-      const start = new Date(lesson.start_time);
-      const end = new Date(lesson.end_time);
-      
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      
-      // We format using local timezone
-      const dateStr = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
-      const startStr = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
-      const endStr = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
-
-      setFormData({
-        subject_id: lesson.subject.id,
-        teacher_id: lesson.teacher?.id || '',
-        room_id: lesson.room.id,
-        date: dateStr,
-        start_time: startStr,
-        end_time: endStr,
+    let isMounted = true;
+    Promise.all([
+      fetchApi('/api/teachers'),
+      fetchApi('/api/subjects'),
+      fetchApi('/api/rooms'),
+    ])
+      .then(([t, s, r]) => {
+        if (isMounted) {
+          setTeachers(t || []);
+          setSubjects(s || []);
+          setRooms(r || []);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load entities', err);
       });
-    } else {
-      // Default to today
-      const today = new Date();
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      const dateStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
-      setFormData({
-        subject_id: '',
-        teacher_id: '',
-        room_id: '',
-        date: dateStr,
-        start_time: '09:00',
-        end_time: '13:00',
-      });
-    }
-  }, [lesson, isOpen]);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -206,7 +179,6 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
     if (name === 'start_time') {
       const [hours, minutes] = value.split(':').map(Number);
       if (!isNaN(hours) && !isNaN(minutes)) {
-        // Aggiunge 4 ore e formatta aggiungendo lo zero iniziale se necessario
         const endHours = (hours + 4) % 24;
         const end_time = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         setFormData((prev) => ({ ...prev, start_time: value, end_time }));
@@ -221,31 +193,43 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
     try {
       const created = await fetchApi(`/api/${type}`, {
         method: 'POST',
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name }),
       });
       if (created) {
-        await loadEntities();
-        if (type === 'teachers') setFormData(prev => ({...prev, teacher_id: created.id}));
-        if (type === 'subjects') setFormData(prev => ({...prev, subject_id: created.id}));
-        if (type === 'rooms') setFormData(prev => ({...prev, room_id: created.id}));
+        const [t, s, r] = await Promise.all([
+          fetchApi('/api/teachers'),
+          fetchApi('/api/subjects'),
+          fetchApi('/api/rooms'),
+        ]);
+        setTeachers(t || []);
+        setSubjects(s || []);
+        setRooms(r || []);
+        if (type === 'teachers') setFormData((prev) => ({ ...prev, teacher_id: created.id }));
+        if (type === 'subjects') setFormData((prev) => ({ ...prev, subject_id: created.id }));
+        if (type === 'rooms') setFormData((prev) => ({ ...prev, room_id: created.id }));
       }
-    } catch(e) {
-      alert("Errore nella creazione");
+    } catch {
+      alert('Errore nella creazione');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.subject_id || !formData.teacher_id || !formData.room_id || !formData.date || !formData.start_time || !formData.end_time) {
-        alert("Per favore compila tutti i campi!");
-        return;
+    if (
+      !formData.subject_id ||
+      !formData.teacher_id ||
+      !formData.room_id ||
+      !formData.date ||
+      !formData.start_time ||
+      !formData.end_time
+    ) {
+      alert('Per favore compila tutti i campi!');
+      return;
     }
 
     setLoading(true);
 
     try {
-      // Combine date and time strings and convert to ISO string.
-      // We parse them as local datetimes
       const startDateTime = new Date(`${formData.date}T${formData.start_time}`);
       const endDateTime = new Date(`${formData.date}T${formData.end_time}`);
 
@@ -268,7 +252,7 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
           body: JSON.stringify(payload),
         });
       }
-      
+
       onSuccess();
       onClose();
     } catch (error) {
@@ -281,7 +265,7 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
 
   const handleDelete = async () => {
     if (!lesson?.id || !confirm('Sei sicuro di voler eliminare questa lezione?')) return;
-    
+
     setLoading(true);
     try {
       await fetchApi(`/api/lessons/${lesson.id}`, { method: 'DELETE' });
@@ -289,7 +273,7 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
       onClose();
     } catch (error) {
       console.error('Failed to delete lesson', error);
-      alert('Errore durante l\'eliminazione');
+      alert("Errore durante l'eliminazione");
     } finally {
       setLoading(false);
     }
@@ -341,27 +325,53 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
 
           <div className="space-y-2">
             <Label htmlFor="date">Data</Label>
-            <Input type="date" id="date" name="date" value={formData.date || ''} onChange={handleChange} required />
+            <Input
+              type="date"
+              id="date"
+              name="date"
+              value={formData.date || ''}
+              onChange={handleChange}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="start_time">Ora Inizio</Label>
-              <Input type="time" id="start_time" name="start_time" value={formData.start_time || ''} onChange={handleChange} required />
+              <Input
+                type="time"
+                id="start_time"
+                name="start_time"
+                value={formData.start_time || ''}
+                onChange={handleChange}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="end_time">Ora Fine</Label>
-              <Input type="time" id="end_time" name="end_time" value={formData.end_time || ''} onChange={handleChange} required />
+              <Input
+                type="time"
+                id="end_time"
+                name="end_time"
+                value={formData.end_time || ''}
+                onChange={handleChange}
+                required
+              />
             </div>
           </div>
 
           <DialogFooter className="mt-6 flex-row justify-between sm:justify-between">
             {lesson ? (
-              <Button type="button" variant="destructive" onClick={handleDelete} disabled={loading}>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={loading}
+              >
                 Elimina
               </Button>
             ) : (
-              <div /> /* Empty div to keep flex-between spacing if no lesson */
+              <div />
             )}
             <div className="flex gap-2 ml-auto">
               <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
@@ -376,4 +386,9 @@ export default function LessonFormModal({ isOpen, onClose, lesson, onSuccess }: 
       </DialogContent>
     </Dialog>
   );
+}
+
+export default function LessonFormModal(props: LessonFormModalProps) {
+  if (!props.isOpen) return null;
+  return <LessonFormModalContent key={props.lesson?.id || 'new'} {...props} />;
 }

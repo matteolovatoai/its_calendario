@@ -12,6 +12,7 @@ from auth import (
 from database import get_db
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 app = FastAPI(title="ITS Calendario API")
@@ -46,10 +47,23 @@ async def login_google(
     if not email:
         raise HTTPException(status_code=400, detail="Email mancante nel token")
 
-    user_in_db = db.query(models.User).filter(models.User.email == email).first()
+    email = email.strip().lower()
+
+    user_in_db = (
+        db.query(models.User)
+        .filter(func.lower(models.User.email) == email)
+        .first()
+    )
     if user_in_db:
         role = user_in_db.role
-    elif email.endswith(("@allievi.scuola.com", "@scuola.com")):
+    elif email.endswith(
+        (
+            "@allievi.itsdigitalacademy.com",
+            "@itsdigitalacademy.com",
+            "@allievi.scuola.com",
+            "@scuola.com",
+        )
+    ):
         role = "student"
     else:
         raise HTTPException(status_code=403, detail="Dominio non autorizzato")

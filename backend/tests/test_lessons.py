@@ -5,6 +5,7 @@ import uuid
 # Fix per variabili d'ambiente mancanti nei test
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
+import models
 from auth import get_current_admin, get_current_user, get_current_user_optional
 from database import Base, get_db
 from fastapi.testclient import TestClient
@@ -171,3 +172,68 @@ def test_student_sees_unmasked_lesson():
 
     app.dependency_overrides.clear()
     app.dependency_overrides[get_db] = override_get_db
+
+
+def test_login_google_student_domains(monkeypatch):
+    import auth
+    import jwt
+    from config import settings
+
+    monkeypatch.setattr(
+        auth,
+        "verify_google_token",
+        lambda token: {"email": "mario@allievi.itsdigitalacademy.com"},
+    )
+    res = client.post("/api/auth/google", json={"token": "valid_token"})
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+    assert payload["role"] == "student"
+
+
+def test_login_google_staff_not_in_whitelist(monkeypatch):
+    import auth
+    import jwt
+    from config import settings
+
+    monkeypatch.setattr(
+        auth,
+        "verify_google_token",
+        lambda token: {"email": "docente@itsdigitalacademy.com"},
+    )
+    res = client.post("/api/auth/google", json={"token": "valid_token"})
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+    assert payload["role"] == "student"
+
+
+def test_login_google_whitelist_admin_case_insensitive(monkeypatch):
+    import auth
+    import jwt
+    from config import settings
+
+    db = TestingSessionLocal()
+    admin_user = models.User(id=uuid.uuid4(), email="Admin.Teo@gmail.com", role="admin")
+    db.add(admin_user)
+    db.commit()
+    db.close()
+
+    monkeypatch.setattr(
+        auth, "verify_google_token", lambda token: {"email": "admin.teo@gmail.com"}
+    )
+    res = client.post("/api/auth/google", json={"token": "valid_token"})
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+    assert payload["role"] == "admin"
+
+
+def test_login_google_unauthorized_domain(monkeypatch):
+    import auth
+
+    monkeypatch.setattr(
+        auth, "verify_google_token", lambda token: {"email": "random@gmail.com"}
+    )
+    res = client.post("/api/auth/google", json={"token": "valid_token"})
+    assert res.status_code == 403
