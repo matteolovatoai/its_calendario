@@ -41,6 +41,7 @@ async def login_google(
 
     id_info = verify_google_token(request.token)
     if not id_info:
+        print("❌ [Auth] verify_google_token ha fallito la validazione del token")
         raise HTTPException(status_code=401, detail="Token Google non valido")
 
     email = id_info.get("email")
@@ -48,6 +49,7 @@ async def login_google(
         raise HTTPException(status_code=400, detail="Email mancante nel token")
 
     email = email.strip().lower()
+    print(f"🔍 [Auth] Tentativo di login per email: {email}")
 
     user_in_db = (
         db.query(models.User)
@@ -56,6 +58,7 @@ async def login_google(
     )
     if user_in_db:
         role = user_in_db.role
+        print(f"✅ [Auth] Trovato utente nel DB con ruolo: {role}")
     elif email.endswith(
         (
             "@allievi.itsdigitalacademy.com",
@@ -65,7 +68,9 @@ async def login_google(
         )
     ):
         role = "student"
+        print("✅ [Auth] Riconosciuto come studente dal dominio istituzionale")
     else:
+        print(f"⛔ [Auth] Dominio rifiutato per email: {email}")
         raise HTTPException(status_code=403, detail="Dominio non autorizzato")
 
     access_token = create_access_token(data={"sub": email, "role": role})

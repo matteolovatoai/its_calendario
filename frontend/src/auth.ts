@@ -25,8 +25,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             body: JSON.stringify({ token: account.id_token }),
           });
 
-          return res.ok;
-        } catch {
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error(
+              `[NextAuth signIn] Backend rifiutato: status=${res.status}, body=${errText}`
+            );
+            return false;
+          }
+          return true;
+        } catch (err) {
+          console.error("[NextAuth signIn] Eccezione chiamata backend:", err);
           return false;
         }
       }
