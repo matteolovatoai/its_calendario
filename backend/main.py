@@ -3,7 +3,12 @@ from typing import Annotated
 
 import models
 import schemas
-from auth import create_access_token, get_current_user, get_current_user_optional, get_current_admin
+from auth import (
+    create_access_token,
+    get_current_admin,
+    get_current_user,
+    get_current_user_optional,
+)
 from database import get_db
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -156,7 +161,7 @@ def get_lessons(
 ):
     """Recupera tutte le lezioni. Oscura il docente per i non loggati (GDPR)."""
     lessons = db.query(models.Lesson).all()
-    
+
     response_lessons = []
     for lesson in lessons:
         lesson_dto = schemas.LessonResponse.model_validate(lesson)
@@ -164,7 +169,7 @@ def get_lessons(
             lesson_dto.teacher = None
             lesson_dto.teacher_id = None
         response_lessons.append(lesson_dto)
-            
+
     return response_lessons
 
 
@@ -178,12 +183,12 @@ def get_lesson(
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lezione non trovata")
-    
+
     lesson_dto = schemas.LessonResponse.model_validate(lesson)
     if not current_user:
         lesson_dto.teacher = None
         lesson_dto.teacher_id = None
-        
+
     return lesson_dto
 
 

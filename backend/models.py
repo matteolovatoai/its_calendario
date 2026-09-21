@@ -19,7 +19,7 @@ class User(Base):
     )
 
 
-@event.listens_for(User, 'before_delete')
+@event.listens_for(User, "before_delete")
 def receive_before_delete(mapper, connection, target):
     if target.email == "admin@scuola.com":
         raise ValueError("Impossibile eliminare l'amministratore base.")
