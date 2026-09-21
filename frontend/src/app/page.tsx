@@ -58,7 +58,7 @@ export default function HomePage() {
       <footer className="mt-2 py-1 text-center text-xs text-muted-foreground shrink-0 flex justify-center items-center gap-3">
         <span>ITS Digital Academy</span>
         <span>•</span>
-        <Link href="/privacy-policy" className="hover:underline hover:text-foreground transition-colors">
+        <Link href="/privacy" className="hover:underline hover:text-foreground transition-colors">
           Privacy Policy
         </Link>
       </footer>
