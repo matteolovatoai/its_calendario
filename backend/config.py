@@ -14,6 +14,9 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_DAYS: int = 60
 
+    # Rate Limiting
+    RATE_LIMIT_LESSONS: str = "60/minute"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

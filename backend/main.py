@@ -10,15 +10,20 @@ from auth import (
     get_current_user,
     get_current_user_optional,
 )
+from config import settings
 from database import get_db
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="ITS Calendario API")
-
-from config import settings
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 origins = []
 
@@ -168,7 +173,9 @@ def create_room(
 
 
 @app.get("/api/lessons", response_model=list[schemas.LessonResponse])
+@limiter.limit(lambda: settings.RATE_LIMIT_LESSONS)
 def get_lessons(
+    request: Request,
     start_date: datetime,
     end_date: datetime,
     db: Annotated[Session, Depends(get_db)],
@@ -208,7 +215,9 @@ def get_lessons(
 
 
 @app.get("/api/lessons/{lesson_id}", response_model=schemas.LessonResponse)
+@limiter.limit(lambda: settings.RATE_LIMIT_LESSONS)
 def get_lesson(
+    request: Request,
     lesson_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,

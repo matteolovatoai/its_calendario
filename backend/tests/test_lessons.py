@@ -367,3 +367,38 @@ def test_get_lessons_naive_datetime_handling():
     )
     assert res.status_code == 200
     assert isinstance(res.json(), list)
+
+
+def test_rate_limiting_get_lessons():
+    from config import settings
+    from main import limiter
+
+    original_rate = settings.RATE_LIMIT_LESSONS
+    settings.RATE_LIMIT_LESSONS = "2/minute"
+    limiter.reset()
+
+    try:
+        start_date = "2026-10-14T00:00:00Z"
+        end_date = "2026-10-16T23:59:59Z"
+
+        # Prime due richieste consentite
+        res1 = client.get(
+            "/api/lessons", params={"start_date": start_date, "end_date": end_date}
+        )
+        assert res1.status_code == 200
+
+        res2 = client.get(
+            "/api/lessons", params={"start_date": start_date, "end_date": end_date}
+        )
+        assert res2.status_code == 200
+
+        # Terza richiesta supera il limite (2/minute)
+        res3 = client.get(
+            "/api/lessons", params={"start_date": start_date, "end_date": end_date}
+        )
+        assert res3.status_code == 429
+        assert "Rate limit exceeded" in res3.json().get("error", "")
+    finally:
+        settings.RATE_LIMIT_LESSONS = original_rate
+        limiter.reset()
+
