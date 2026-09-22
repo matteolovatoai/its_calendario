@@ -341,6 +341,7 @@ function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFo
                 type="time"
                 id="start_time"
                 name="start_time"
+                step="900"
                 value={formData.start_time || ''}
                 onChange={handleChange}
                 required
@@ -352,6 +353,7 @@ function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFo
                 type="time"
                 id="end_time"
                 name="end_time"
+                step="900"
                 value={formData.end_time || ''}
                 onChange={handleChange}
                 required

@@ -156,6 +156,11 @@ export function getWeekBoundsUtc(mondayDateStr: string): { startUtc: string; end
   return { startUtc, endUtc };
 }
 
+export const DEFAULT_START_HOUR = 8;
+export const DEFAULT_END_HOUR = 18;
+export const DEFAULT_SLOTS_PER_HOUR = 4;
+export const DEFAULT_SLOT_MINUTES = 15;
+
 export interface LessonGridPosition {
   gridRowStart: number;
   gridRowEnd: number;
@@ -165,11 +170,12 @@ export interface LessonGridPosition {
 /**
  * Calculates CSS grid positions based on Rome local time.
  * Column: 1 (Mon) to 5 (Fri).
- * Rows: minute-based row offset from startHour.
+ * Rows: 15-minute logical slot offset from startHour (4 slots per hour).
  */
 export function getLessonGridPosition(
   lesson: { start_time: string; end_time: string },
-  startHour: number = 8
+  startHour: number = DEFAULT_START_HOUR,
+  slotMinutes: number = DEFAULT_SLOT_MINUTES
 ): LessonGridPosition | null {
   const startParts = getRomeParts(lesson.start_time);
   const endParts = getRomeParts(lesson.end_time);
@@ -180,8 +186,11 @@ export function getLessonGridPosition(
   const startMinutes = (startParts.hour - startHour) * 60 + startParts.minute;
   const endMinutes = (endParts.hour - startHour) * 60 + endParts.minute;
 
-  const gridRowStart = startMinutes + 1;
-  const gridRowEnd = endMinutes + 1;
+  const startSlot = Math.round(startMinutes / slotMinutes);
+  const endSlot = Math.round(endMinutes / slotMinutes);
+
+  const gridRowStart = startSlot + 1;
+  const gridRowEnd = Math.max(gridRowStart + 1, endSlot + 1);
   const gridColumn = dayOfWeek;
 
   return { gridRowStart, gridRowEnd, gridColumn };

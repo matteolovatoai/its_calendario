@@ -119,7 +119,7 @@ test('getWeekBoundsUtc covers Monday 00:00 to Sunday 23:59:59.999 in Rome', () =
   assert.strictEqual(bounds.endUtc, '2026-09-27T21:59:59.999Z');
 });
 
-test('getLessonGridPosition positions on Monday 09:00 to 13:00', () => {
+test('getLessonGridPosition positions on Monday 09:00 to 13:00 (15-min slots)', () => {
   // Monday 09:00-13:00 Rome is 07:00-11:00 UTC
   const pos = getLessonGridPosition({
     start_time: '2026-09-21T07:00:00.000Z',
@@ -127,8 +127,30 @@ test('getLessonGridPosition positions on Monday 09:00 to 13:00', () => {
   });
   assert.notStrictEqual(pos, null);
   assert.strictEqual(pos?.gridColumn, 1);
-  assert.strictEqual(pos?.gridRowStart, 61); // (9 - 8) * 60 + 1
-  assert.strictEqual(pos?.gridRowEnd, 301); // (13 - 8) * 60 + 1
+  assert.strictEqual(pos?.gridRowStart, 5); // 09:00 is (9 - 8) * 4 + 1 = 5
+  assert.strictEqual(pos?.gridRowEnd, 21); // 13:00 is (13 - 8) * 4 + 1 = 21
+});
+
+test('getLessonGridPosition positions 15-minute non-hour event (08:15 to 10:45)', () => {
+  // 08:15-10:45 Rome is 06:15-08:45 UTC
+  const pos = getLessonGridPosition({
+    start_time: '2026-09-21T06:15:00.000Z',
+    end_time: '2026-09-21T08:45:00.000Z',
+  });
+  assert.notStrictEqual(pos, null);
+  assert.strictEqual(pos?.gridColumn, 1);
+  assert.strictEqual(pos?.gridRowStart, 2); // 08:15 is slot 1 -> row 2
+  assert.strictEqual(pos?.gridRowEnd, 12); // 10:45 is slot 11 -> row 12
+});
+
+test('getLessonGridPosition handles single 15-minute slot (08:00 to 08:15)', () => {
+  const pos = getLessonGridPosition({
+    start_time: '2026-09-21T06:00:00.000Z',
+    end_time: '2026-09-21T06:15:00.000Z',
+  });
+  assert.notStrictEqual(pos, null);
+  assert.strictEqual(pos?.gridRowStart, 1);
+  assert.strictEqual(pos?.gridRowEnd, 2);
 });
 
 test('getLessonGridPosition ignores weekend lessons', () => {
@@ -139,3 +161,4 @@ test('getLessonGridPosition ignores weekend lessons', () => {
   });
   assert.strictEqual(pos, null);
 });
+

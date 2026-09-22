@@ -19,6 +19,8 @@ import {
 
 const START_HOUR = 8;
 const END_HOUR = 18;
+const SLOTS_PER_HOUR = 4;
+const TOTAL_SLOTS = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
 
 const DAY_NAMES = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
@@ -178,7 +180,7 @@ export default function WeeklyCalendar({
             <div
               className="flex-1 grid grid-cols-5 relative"
               style={{
-                gridTemplateRows: `repeat(${(END_HOUR - START_HOUR) * 60}, 1fr)`,
+                gridTemplateRows: `repeat(${TOTAL_SLOTS}, 1fr)`,
               }}
             >
               {/* Linee verticali */}
