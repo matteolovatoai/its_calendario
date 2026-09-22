@@ -57,7 +57,7 @@ Le API implementano un controllo degli accessi basato sui ruoli (RBAC) e logiche
 1. **Autenticazione**
    * `POST /api/auth/google` -> Riceve il token di Google, controlla i domini/DB e restituisce il JWT interno (con ruolo `student` o `admin`).
 2. **Lezioni**
-   * `GET /api/lessons` -> Restituisce le lezioni. **Endpoint ibrido**: Se chiamato senza token, oscura i dati sensibili (GDPR). Se chiamato con token valido, restituisce l'anagrafica completa.
+   * `GET /api/lessons?start_date=...&end_date=...` -> Restituisce le lezioni nell'intervallo temporale (filtri `start_date` e `end_date` obbligatori). **Endpoint ibrido**: Se chiamato senza token, oscura i dati sensibili (GDPR). Se chiamato con token valido, restituisce l'anagrafica completa.
    * `POST /api/lessons` -> Crea una lezione (logica anti-sovrapposizione). *Protetto (solo admin).*
    * `PUT /api/lessons/{id}` -> Modifica lezione. *Protetto (solo admin).*
    * `DELETE /api/lessons/{id}` -> Elimina lezione. *Protetto (solo admin).*

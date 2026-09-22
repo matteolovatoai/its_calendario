@@ -1,5 +1,6 @@
-import uuid
+from datetime import datetime, timezone
 from typing import Annotated
+import uuid
 
 import models
 import schemas
@@ -168,11 +169,32 @@ def create_room(
 
 @app.get("/api/lessons", response_model=list[schemas.LessonResponse])
 def get_lessons(
+    start_date: datetime,
+    end_date: datetime,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
 ):
-    """Recupera tutte le lezioni. Oscura il docente per i non loggati (GDPR)."""
-    lessons = db.query(models.Lesson).all()
+    """Recupera le lezioni nell'intervallo specificato. Oscura il docente per i non loggati (GDPR)."""
+    if start_date.tzinfo is None:
+        start_date = start_date.replace(tzinfo=timezone.utc)
+    if end_date.tzinfo is None:
+        end_date = end_date.replace(tzinfo=timezone.utc)
+
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_date non può essere successiva a end_date.",
+        )
+
+    lessons = (
+        db.query(models.Lesson)
+        .filter(
+            models.Lesson.start_time <= end_date,
+            models.Lesson.end_time >= start_date,
+        )
+        .order_by(models.Lesson.start_time.asc())
+        .all()
+    )
 
     response_lessons = []
     for lesson in lessons:

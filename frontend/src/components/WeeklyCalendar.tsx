@@ -36,11 +36,24 @@ export default function WeeklyCalendar({
   const { isAdmin, token, isAuthenticated } = useAuth();
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
 
+  const currentWeekEnd = new Date(currentWeekStart);
+  currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
+  currentWeekEnd.setHours(23, 59, 59, 999);
+
   useEffect(() => {
     let isMounted = true;
+    const weekEnd = new Date(currentWeekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
     const fetchLessons = async () => {
       try {
-        const data = await fetchApi('/api/lessons');
+        setLoading(true);
+        const params = new URLSearchParams({
+          start_date: currentWeekStart.toISOString(),
+          end_date: weekEnd.toISOString(),
+        });
+        const data = await fetchApi(`/api/lessons?${params.toString()}`);
         if (isMounted) {
           setLessons(data || []);
         }
@@ -58,11 +71,7 @@ export default function WeeklyCalendar({
     return () => {
       isMounted = false;
     };
-  }, [refreshTrigger, token, isAuthenticated]);
-
-  const currentWeekEnd = new Date(currentWeekStart);
-  currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
-  currentWeekEnd.setHours(23, 59, 59, 999);
+  }, [currentWeekStart, refreshTrigger, token, isAuthenticated]);
 
   const weekLessons = lessons.filter((l) => {
     const d = new Date(l.start_time);

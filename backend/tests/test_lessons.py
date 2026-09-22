@@ -149,7 +149,14 @@ def test_anonymous_sees_masked_lesson():
     assert data["teacher_id"] is None
     assert data["teacher"] is None
 
-    res_list = client.get("/api/lessons")
+    now = datetime.datetime.now(datetime.timezone.utc)
+    res_list = client.get(
+        "/api/lessons",
+        params={
+            "start_date": (now - datetime.timedelta(days=1)).isoformat(),
+            "end_date": (now + datetime.timedelta(days=1)).isoformat(),
+        },
+    )
     assert res_list.status_code == 200
     assert len(res_list.json()) > 0
     assert res_list.json()[0]["teacher_id"] is None
@@ -250,3 +257,113 @@ def test_token_expiration_matches_settings(monkeypatch):
     now = datetime.datetime.now(datetime.timezone.utc).timestamp()
     days_diff = (exp - now) / 86400
     assert 59 <= days_diff <= 61
+
+
+def test_get_lessons_requires_start_and_end_date():
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # Nessun parametro
+    res = client.get("/api/lessons")
+    assert res.status_code == 422
+
+    # Solo start_date
+    res = client.get("/api/lessons", params={"start_date": now})
+    assert res.status_code == 422
+
+    # Solo end_date
+    res = client.get("/api/lessons", params={"end_date": now})
+    assert res.status_code == 422
+
+
+def test_get_lessons_start_after_end_returns_400():
+    now = datetime.datetime.now(datetime.timezone.utc)
+    start_date = (now + datetime.timedelta(days=2)).isoformat()
+    end_date = now.isoformat()
+
+    res = client.get(
+        "/api/lessons", params={"start_date": start_date, "end_date": end_date}
+    )
+    assert res.status_code == 400
+    assert "start_date non può essere successiva a end_date" in res.json()["detail"]
+
+
+def test_get_lessons_filters_by_date_range():
+    app.dependency_overrides[get_current_admin] = mock_admin
+    app.dependency_overrides[get_current_user] = mock_admin
+
+    base_time = datetime.datetime(2026, 10, 15, 10, 0, 0, tzinfo=datetime.timezone.utc)
+
+    # Lezione 1: passata (10 ottobre)
+    res_1 = client.post(
+        "/api/lessons",
+        json={
+            "start_time": (base_time - datetime.timedelta(days=5)).isoformat(),
+            "end_time": (
+                base_time - datetime.timedelta(days=5) + datetime.timedelta(hours=2)
+            ).isoformat(),
+            "teacher_id": test_data["teacher_id"],
+            "subject_id": test_data["subject_id"],
+            "room_id": test_data["room_id"],
+        },
+    )
+    assert res_1.status_code == 201
+    past_id = res_1.json()["id"]
+
+    # Lezione 2: target (15 ottobre)
+    res_2 = client.post(
+        "/api/lessons",
+        json={
+            "start_time": base_time.isoformat(),
+            "end_time": (base_time + datetime.timedelta(hours=2)).isoformat(),
+            "teacher_id": test_data["teacher_id"],
+            "subject_id": test_data["subject_id"],
+            "room_id": test_data["room_id"],
+        },
+    )
+    assert res_2.status_code == 201
+    target_id = res_2.json()["id"]
+
+    # Lezione 3: futura (20 ottobre)
+    res_3 = client.post(
+        "/api/lessons",
+        json={
+            "start_time": (base_time + datetime.timedelta(days=5)).isoformat(),
+            "end_time": (
+                base_time + datetime.timedelta(days=5) + datetime.timedelta(hours=2)
+            ).isoformat(),
+            "teacher_id": test_data["teacher_id"],
+            "subject_id": test_data["subject_id"],
+            "room_id": test_data["room_id"],
+        },
+    )
+    assert res_3.status_code == 201
+    future_id = res_3.json()["id"]
+
+    # Filtra solo la settimana del 15 ottobre (dal 14 al 16)
+    query_start = (base_time - datetime.timedelta(days=1)).isoformat()
+    query_end = (base_time + datetime.timedelta(days=1)).isoformat()
+
+    res_filter = client.get(
+        "/api/lessons", params={"start_date": query_start, "end_date": query_end}
+    )
+    assert res_filter.status_code == 200
+    returned_ids = [item["id"] for item in res_filter.json()]
+
+    assert target_id in returned_ids
+    assert past_id not in returned_ids
+    assert future_id not in returned_ids
+
+    app.dependency_overrides.clear()
+    app.dependency_overrides[get_db] = override_get_db
+
+
+def test_get_lessons_naive_datetime_handling():
+    # Passaggio di date ISO naive senza 'Z' o offset esplicito
+    start_date = "2026-10-14T00:00:00"
+    end_date = "2026-10-16T23:59:59"
+
+    res = client.get(
+        "/api/lessons", params={"start_date": start_date, "end_date": end_date}
+    )
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)
