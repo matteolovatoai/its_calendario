@@ -15,7 +15,10 @@
   "remoteEnv": {
     "PATH": "${containerEnv:PATH}:/home/vscode/.local/bin:/home/vscode/venv/bin"
   },
-  "forwardPorts": [3000, 8000],
+  "forwardPorts": [
+    3000,
+    8000
+  ],
   "portsAttributes": {
     "3000": {
       "label": "Frontend (Next.js)",
@@ -39,8 +42,7 @@
         "ms-python.python",
         "charliermarsh.ruff",
         "dbaeumer.vscode-eslint",
-        "bradlc.vscode-tailwindcss",
-        "GitHub.vscode-pull-request-github"
+        "bradlc.vscode-tailwindcss"
       ]
     }
   },
