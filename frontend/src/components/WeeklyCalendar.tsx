@@ -6,6 +6,7 @@ import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import LessonDetailModal from '@/components/LessonDetailModal';
+import DatePickerPopover from '@/components/DatePickerPopover';
 import {
   getMondayOfRomeWeek,
   addDaysToDateStr,
@@ -101,7 +102,7 @@ export default function WeeklyCalendar({
     return { dateStr, dayNumber, isToday };
   });
 
-  const monthName = formatRomeMonthYear(currentMonday);
+  const isCurrentWeekToday = currentMonday === getMondayOfRomeWeek();
 
   if (loading) {
     return (
@@ -115,18 +116,40 @@ export default function WeeklyCalendar({
     <>
       <div className="flex flex-col border border-border rounded-xl bg-card shadow-sm text-card-foreground w-full">
         {/* Navbar Settimana */}
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/50 rounded-t-xl">
-          <Button variant="outline" size="sm" onClick={goPrevWeek} className="px-2 sm:px-3 text-xs sm:text-sm">
-            &larr; <span className="hidden sm:inline ml-1">Precedente</span>
-          </Button>
-          <span
-            onClick={goToday}
-            className="font-semibold text-base sm:text-lg capitalize cursor-pointer hover:text-primary transition-colors hover:underline decoration-primary/50 underline-offset-4 text-center truncate mx-2"
-            title="Torna a oggi"
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/50 rounded-t-xl gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goPrevWeek}
+              className="px-2 sm:px-3 text-xs sm:text-sm"
+              title="Settimana precedente"
+            >
+              &larr; <span className="hidden sm:inline ml-1">Precedente</span>
+            </Button>
+            <Button
+              variant={isCurrentWeekToday ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={goToday}
+              className="px-2 sm:px-3 text-xs sm:text-sm"
+              title="Torna alla settimana corrente"
+            >
+              Oggi
+            </Button>
+          </div>
+
+          <DatePickerPopover
+            currentMonday={currentMonday}
+            onSelectMonday={(monday) => setCurrentMonday(monday)}
+          />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goNextWeek}
+            className="px-2 sm:px-3 text-xs sm:text-sm"
+            title="Settimana successiva"
           >
-            {monthName}
-          </span>
-          <Button variant="outline" size="sm" onClick={goNextWeek} className="px-2 sm:px-3 text-xs sm:text-sm">
             <span className="hidden sm:inline mr-1">Successiva</span> &rarr;
           </Button>
         </div>

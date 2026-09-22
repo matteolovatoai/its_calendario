@@ -162,3 +162,14 @@ test('getLessonGridPosition ignores weekend lessons', () => {
   assert.strictEqual(pos, null);
 });
 
+test('getMondayOfRomeWeek maps any picked day to that week Monday for DatePicker', () => {
+  // Pick Wednesday 2026-09-23 -> Monday 2026-09-21
+  assert.strictEqual(getMondayOfRomeWeek('2026-09-23'), '2026-09-21');
+  // Pick Friday 2026-09-25 -> Monday 2026-09-21
+  assert.strictEqual(getMondayOfRomeWeek('2026-09-25'), '2026-09-21');
+  // Pick Sunday 2026-09-27 -> Monday 2026-09-21
+  assert.strictEqual(getMondayOfRomeWeek('2026-09-27'), '2026-09-21');
+  // Pick Sunday across month boundary (2026-11-01 is Sunday) -> Monday 2026-10-26
+  assert.strictEqual(getMondayOfRomeWeek('2026-11-01'), '2026-10-26');
+});
+
