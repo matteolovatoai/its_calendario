@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
@@ -32,14 +32,14 @@ export default function DatePickerPopover({
   const [viewYear, setViewYear] = useState<number>(initialParts.year);
   const [viewMonth, setViewMonth] = useState<number>(initialParts.month); // 1 to 12
 
-  // Sync viewYear and viewMonth when currentMonday changes or when opened
-  useEffect(() => {
-    if (isOpen) {
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
       const parts = getRomeParts(currentMonday);
       setViewYear(parts.year);
       setViewMonth(parts.month);
     }
-  }, [isOpen, currentMonday]);
+    setIsOpen(open);
+  };
 
   const handlePrevMonth = () => {
     if (viewMonth === 1) {
@@ -120,7 +120,7 @@ export default function DatePickerPopover({
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         className={cn(
           buttonVariants({ variant: 'ghost', size: 'sm' }),

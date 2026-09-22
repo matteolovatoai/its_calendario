@@ -13,7 +13,6 @@ import {
   getWeekBoundsUtc,
   getRomeTodayString,
   getRomeParts,
-  formatRomeMonthYear,
   formatRomeTimeRange,
   getLessonGridPosition,
 } from '@/lib/timezone';
@@ -90,10 +89,6 @@ export default function WeeklyCalendar({
     setCurrentMonday((prev) => addDaysToDateStr(prev, 7));
   };
 
-  const goToday = () => {
-    setCurrentMonday(getMondayOfRomeWeek());
-  };
-
   const todayRomeStr = getRomeTodayString();
   const daysOfWeek = Array.from({ length: 5 }).map((_, i) => {
     const dateStr = addDaysToDateStr(currentMonday, i);
@@ -101,8 +96,6 @@ export default function WeeklyCalendar({
     const isToday = dateStr === todayRomeStr;
     return { dateStr, dayNumber, isToday };
   });
-
-  const isCurrentWeekToday = currentMonday === getMondayOfRomeWeek();
 
   if (loading) {
     return (
@@ -117,26 +110,15 @@ export default function WeeklyCalendar({
       <div className="flex flex-col border border-border rounded-xl bg-card shadow-sm text-card-foreground w-full">
         {/* Navbar Settimana */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/50 rounded-t-xl gap-2">
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goPrevWeek}
-              className="px-2 sm:px-3 text-xs sm:text-sm"
-              title="Settimana precedente"
-            >
-              &larr; <span className="hidden sm:inline ml-1">Precedente</span>
-            </Button>
-            <Button
-              variant={isCurrentWeekToday ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={goToday}
-              className="px-2 sm:px-3 text-xs sm:text-sm"
-              title="Torna alla settimana corrente"
-            >
-              Oggi
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goPrevWeek}
+            className="px-2 sm:px-3 text-xs sm:text-sm"
+            title="Settimana precedente"
+          >
+            &larr; <span className="hidden sm:inline ml-1">Precedente</span>
+          </Button>
 
           <DatePickerPopover
             currentMonday={currentMonday}
