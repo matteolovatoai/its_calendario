@@ -89,7 +89,8 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-xl font-semibold">4. Cookie e Tecnologie di Tracciamento</h2>
           <p className="text-muted-foreground leading-relaxed">
             L&apos;applicazione <strong>non utilizza cookie di profilazione o di terze parti a fini pubblicitari</strong>. 
-            Vengono utilizzati esclusivamente cookie tecnici necessari a mantenere attiva la sessione dell&apos;utente autenticato durante la navigazione.
+            Vengono utilizzati esclusivamente cookie tecnici necessari a mantenere attiva la sessione dell&apos;utente autenticato durante la navigazione. 
+            Tali cookie rimangono attivi per una durata massima di 60 giorni dall&apos;ultimo accesso o fino al logout esplicito da parte dell&apos;utente.
           </p>
         </section>
 
@@ -97,7 +98,7 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-xl font-semibold">5. Conservazione dei Dati</h2>
           <p className="text-muted-foreground leading-relaxed">
             I dati di autorizzazione (email per l&apos;elenco degli amministratori) sono conservati esclusivamente per la durata del servizio.
-            I token di sessione scadono automaticamente e non vengono conservati storici di navigazione personale.
+            I token di sessione hanno una durata massima di 60 giorni, rinnovabili durante l&apos;utilizzo attivo, e vengono revocati al momento del logout. Non vengono conservati storici di navigazione personale.
           </p>
         </section>
 

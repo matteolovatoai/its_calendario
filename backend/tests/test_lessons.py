@@ -237,3 +237,16 @@ def test_login_google_unauthorized_domain(monkeypatch):
     )
     res = client.post("/api/auth/google", json={"token": "valid_token"})
     assert res.status_code == 403
+
+
+def test_token_expiration_matches_settings(monkeypatch):
+    import auth
+    import jwt
+    from config import settings
+
+    token = auth.create_access_token(data={"sub": "test@test.com", "role": "student"})
+    payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+    exp = payload["exp"]
+    now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+    days_diff = (exp - now) / 86400
+    assert 59 <= days_diff <= 61

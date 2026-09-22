@@ -15,6 +15,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   secret: process.env.AUTH_SECRET,
   trustHost: true,
+  session: {
+    strategy: "jwt",
+    maxAge: 60 * 24 * 60 * 60, // 60 giorni
+    updateAge: 24 * 60 * 60, // rinnovo token ogni 24 ore
+  },
   callbacks: {
     async signIn({ account }) {
       if (account?.provider === "google" && account.id_token) {
