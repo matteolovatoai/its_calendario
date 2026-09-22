@@ -44,9 +44,21 @@ class Lesson(Base):
     start_time = Column(DateTime(timezone=True), nullable=False, index=True)
     end_time = Column(DateTime(timezone=True), nullable=False)
 
-    teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=False)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
-    room_id = Column(UUID(as_uuid=True), ForeignKey("rooms.id"), nullable=False)
+    teacher_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("teachers.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    subject_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("subjects.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    room_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("rooms.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
 
     teacher = relationship("Teacher")
     subject = relationship("Subject")

@@ -14,16 +14,28 @@ from config import settings
 from database import get_db
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="ITS Calendario API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "detail": "Operazione non consentita a causa di vincoli di integrità relazionale (es. entità in uso)."
+        },
+    )
 
 origins = []
 
@@ -119,6 +131,26 @@ def create_teacher(
     return db_teacher
 
 
+@app.delete("/api/teachers/{teacher_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_teacher(
+    teacher_id: uuid.UUID,
+    current_admin: Annotated[dict, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    teacher = db.query(models.Teacher).filter(models.Teacher.id == teacher_id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Docente non trovato")
+    try:
+        db.delete(teacher)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Impossibile eliminare il docente: è associato a una o più lezioni.",
+        )
+
+
 @app.get("/api/subjects", response_model=list[schemas.EntityResponse])
 def get_subjects(
     db: Annotated[Session, Depends(get_db)],
@@ -144,6 +176,26 @@ def create_subject(
     return db_subject
 
 
+@app.delete("/api/subjects/{subject_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_subject(
+    subject_id: uuid.UUID,
+    current_admin: Annotated[dict, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
+    if not subject:
+        raise HTTPException(status_code=404, detail="Materia non trovata")
+    try:
+        db.delete(subject)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Impossibile eliminare la materia: è associata a una o più lezioni.",
+        )
+
+
 @app.get("/api/rooms", response_model=list[schemas.EntityResponse])
 def get_rooms(
     db: Annotated[Session, Depends(get_db)],
@@ -167,6 +219,26 @@ def create_room(
     db.commit()
     db.refresh(db_room)
     return db_room
+
+
+@app.delete("/api/rooms/{room_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_room(
+    room_id: uuid.UUID,
+    current_admin: Annotated[dict, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    room = db.query(models.Room).filter(models.Room.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Aula non trovata")
+    try:
+        db.delete(room)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Impossibile eliminare l'aula: è associata a una o più lezioni.",
+        )
 
 
 # --- CRUD Lezioni ---

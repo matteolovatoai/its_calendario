@@ -10,7 +10,7 @@ from auth import get_current_admin, get_current_user, get_current_user_optional
 from database import Base, get_db
 from fastapi.testclient import TestClient
 from main import app
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -21,6 +21,15 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Reset DB
@@ -401,4 +410,121 @@ def test_rate_limiting_get_lessons():
     finally:
         settings.RATE_LIMIT_LESSONS = original_rate
         limiter.reset()
+
+
+def test_delete_unused_anagrafiche():
+    app.dependency_overrides[get_current_admin] = mock_admin
+    app.dependency_overrides[get_current_user] = mock_admin
+
+    # Crea entità temporanee non usate in lezioni
+    res_t = client.post("/api/teachers", json={"name": "Docente Da Eliminare"})
+    assert res_t.status_code == 201
+    t_id = res_t.json()["id"]
+
+    res_s = client.post("/api/subjects", json={"name": "Materia Da Eliminare"})
+    assert res_s.status_code == 201
+    s_id = res_s.json()["id"]
+
+    res_r = client.post("/api/rooms", json={"name": "Aula Da Eliminare"})
+    assert res_r.status_code == 201
+    r_id = res_r.json()["id"]
+
+    # Cancellazione consentita
+    del_t = client.delete(f"/api/teachers/{t_id}")
+    assert del_t.status_code == 204
+
+    del_s = client.delete(f"/api/subjects/{s_id}")
+    assert del_s.status_code == 204
+
+    del_r = client.delete(f"/api/rooms/{r_id}")
+    assert del_r.status_code == 204
+
+    # Verifica che non esistano più (404)
+    assert client.delete(f"/api/teachers/{t_id}").status_code == 404
+    assert client.delete(f"/api/subjects/{s_id}").status_code == 404
+    assert client.delete(f"/api/rooms/{r_id}").status_code == 404
+
+    app.dependency_overrides.pop(get_current_admin, None)
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_graceful_delete_restricted_anagrafiche_in_use():
+    app.dependency_overrides[get_current_admin] = mock_admin
+    app.dependency_overrides[get_current_user] = mock_admin
+
+    # Crea entità
+    res_t = client.post("/api/teachers", json={"name": "Docente In Uso"})
+    t_id = res_t.json()["id"]
+    res_s = client.post("/api/subjects", json={"name": "Materia In Uso"})
+    s_id = res_s.json()["id"]
+    res_r = client.post("/api/rooms", json={"name": "Aula In Uso"})
+    r_id = res_r.json()["id"]
+
+    # Crea una lezione che usa queste entità (usando un orario dedicato per evitare sovrapposizioni)
+    start_time = datetime.datetime(
+        2027, 5, 10, 9, 0, tzinfo=datetime.timezone.utc
+    ).isoformat()
+    end_time = datetime.datetime(
+        2027, 5, 10, 11, 0, tzinfo=datetime.timezone.utc
+    ).isoformat()
+    res_lesson = client.post(
+        "/api/lessons",
+        json={
+            "start_time": start_time,
+            "end_time": end_time,
+            "teacher_id": t_id,
+            "subject_id": s_id,
+            "room_id": r_id,
+        },
+    )
+    assert res_lesson.status_code == 201
+    lesson_id = res_lesson.json()["id"]
+
+    # Tentativo di cancellazione del docente in uso -> 400 (Client Error) anziché 500
+    del_t = client.delete(f"/api/teachers/{t_id}")
+    assert del_t.status_code == 400
+    assert "associat" in del_t.json()["detail"].lower() or "uso" in del_t.json()["detail"].lower()
+
+    # Tentativo di cancellazione della materia in uso -> 400 anziché 500
+    del_s = client.delete(f"/api/subjects/{s_id}")
+    assert del_s.status_code == 400
+    assert "associat" in del_s.json()["detail"].lower() or "uso" in del_s.json()["detail"].lower()
+
+    # Tentativo di cancellazione dell'aula in uso -> 400 anziché 500
+    del_r = client.delete(f"/api/rooms/{r_id}")
+    assert del_r.status_code == 400
+    assert "associat" in del_r.json()["detail"].lower() or "uso" in del_r.json()["detail"].lower()
+
+    # Eliminiamo la lezione
+    del_lesson = client.delete(f"/api/lessons/{lesson_id}")
+    assert del_lesson.status_code == 204
+
+    # Ora le entità non sono più in uso e possono essere cancellate con successo
+    assert client.delete(f"/api/teachers/{t_id}").status_code == 204
+    assert client.delete(f"/api/subjects/{s_id}").status_code == 204
+    assert client.delete(f"/api/rooms/{r_id}").status_code == 204
+
+    app.dependency_overrides.pop(get_current_admin, None)
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_anonymous_and_student_cannot_delete_anagrafiche():
+    # Anonimo (401 Unauthorized)
+    res_t = client.delete(f"/api/teachers/{uuid.uuid4()}")
+    assert res_t.status_code == 401
+
+    res_s = client.delete(f"/api/subjects/{uuid.uuid4()}")
+    assert res_s.status_code == 401
+
+    res_r = client.delete(f"/api/rooms/{uuid.uuid4()}")
+    assert res_r.status_code == 401
+
+    # Studente (403 Forbidden)
+    app.dependency_overrides[get_current_user] = mock_student
+    res_stud = client.delete(f"/api/teachers/{uuid.uuid4()}")
+    assert res_stud.status_code == 403
+
+    app.dependency_overrides.pop(get_current_user, None)
+
+
 
