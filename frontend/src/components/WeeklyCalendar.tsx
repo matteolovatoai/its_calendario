@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useTransition, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Lesson } from '@/types';
 import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import LessonDetailModal from '@/components/LessonDetailModal';
 import DatePickerPopover from '@/components/DatePickerPopover';
+import { cn } from '@/lib/utils';
 import {
   getMondayOfRomeWeek,
   addDaysToDateStr,
@@ -26,22 +28,60 @@ const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_
 const DAY_NAMES = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
 const DAY_INITIALS = ['L', 'M', 'M', 'G', 'V'];
 
-export default function WeeklyCalendar({
-  onLessonEdit,
-  refreshTrigger = 0,
-}: {
+export interface WeeklyCalendarProps {
+  initialLessons?: Lesson[];
+  initialMonday?: string;
   onLessonEdit?: (lesson: Lesson) => void;
   refreshTrigger?: number;
-}) {
-  const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [loading, setLoading] = useState(true);
+}
+
+export default function WeeklyCalendar({
+  initialLessons,
+  initialMonday,
+  onLessonEdit,
+  refreshTrigger = 0,
+}: WeeklyCalendarProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const baseMonday = initialMonday || getMondayOfRomeWeek();
+  const [currentMonday, setCurrentMonday] = useState<string>(baseMonday);
+  const [lessons, setLessons] = useState<Lesson[]>(initialLessons || []);
+  const [loading, setLoading] = useState<boolean>(!initialLessons);
   const [selectedDetailLesson, setSelectedDetailLesson] = useState<Lesson | null>(null);
   const { isAdmin, token, isAuthenticated } = useAuth();
-  const [currentMonday, setCurrentMonday] = useState<string>(() => getMondayOfRomeWeek());
 
-  const { startUtc, endUtc } = getWeekBoundsUtc(currentMonday);
+  // Sync state when server delivers new props (via RSC navigation or router.refresh)
+  const [prevServerProps, setPrevServerProps] = useState({
+    monday: initialMonday,
+    lessons: initialLessons,
+  });
+
+  if (
+    initialMonday !== prevServerProps.monday ||
+    initialLessons !== prevServerProps.lessons
+  ) {
+    setPrevServerProps({ monday: initialMonday, lessons: initialLessons });
+    if (initialMonday) {
+      setCurrentMonday(initialMonday);
+    }
+    if (initialLessons) {
+      setLessons(initialLessons);
+    }
+    setLoading(false);
+  }
+
+  const initialMountRef = useRef(true);
 
   useEffect(() => {
+    // If we have initialLessons from SSR and it's the initial mount, skip client fetch
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      if (initialLessons !== undefined) {
+        return;
+      }
+    }
+
     let isMounted = true;
     const { startUtc: queryStart, endUtc: queryEnd } = getWeekBoundsUtc(currentMonday);
 
@@ -70,8 +110,9 @@ export default function WeeklyCalendar({
     return () => {
       isMounted = false;
     };
-  }, [currentMonday, refreshTrigger, token, isAuthenticated]);
+  }, [currentMonday, refreshTrigger, token, isAuthenticated, initialLessons]);
 
+  const { startUtc, endUtc } = getWeekBoundsUtc(currentMonday);
   const weekStartMs = new Date(startUtc).getTime();
   const weekEndMs = new Date(endUtc).getTime();
 
@@ -81,12 +122,19 @@ export default function WeeklyCalendar({
     return startMs <= weekEndMs && endMs >= weekStartMs;
   });
 
+  const navigateToWeek = (targetMonday: string) => {
+    setCurrentMonday(targetMonday);
+    startTransition(() => {
+      router.push(`/?week=${targetMonday}`, { scroll: false });
+    });
+  };
+
   const goPrevWeek = () => {
-    setCurrentMonday((prev) => addDaysToDateStr(prev, -7));
+    navigateToWeek(addDaysToDateStr(currentMonday, -7));
   };
 
   const goNextWeek = () => {
-    setCurrentMonday((prev) => addDaysToDateStr(prev, 7));
+    navigateToWeek(addDaysToDateStr(currentMonday, 7));
   };
 
   const todayRomeStr = getRomeTodayString();
@@ -97,14 +145,6 @@ export default function WeeklyCalendar({
     return { dateStr, dayNumber, isToday };
   });
 
-  if (loading) {
-    return (
-      <div className="p-8 text-center text-muted-foreground">
-        Caricamento calendario...
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="flex flex-col border border-border rounded-xl bg-card shadow-sm text-card-foreground w-full">
@@ -114,21 +154,30 @@ export default function WeeklyCalendar({
             variant="outline"
             size="sm"
             onClick={goPrevWeek}
+            disabled={isPending || loading}
             className="px-2 sm:px-3 text-xs sm:text-sm"
             title="Settimana precedente"
           >
             &larr; <span className="hidden sm:inline ml-1">Precedente</span>
           </Button>
 
-          <DatePickerPopover
-            currentMonday={currentMonday}
-            onSelectMonday={(monday) => setCurrentMonday(monday)}
-          />
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <DatePickerPopover
+              currentMonday={currentMonday}
+              onSelectMonday={navigateToWeek}
+            />
+            {(isPending || loading) && (
+              <span className="text-[11px] text-muted-foreground animate-pulse hidden sm:inline">
+                Caricamento...
+              </span>
+            )}
+          </div>
 
           <Button
             variant="outline"
             size="sm"
             onClick={goNextWeek}
+            disabled={isPending || loading}
             className="px-2 sm:px-3 text-xs sm:text-sm"
             title="Settimana successiva"
           >
@@ -137,7 +186,7 @@ export default function WeeklyCalendar({
         </div>
 
         {/* Griglia Calendario (visibile per intero senza scroll orizzontale) */}
-        <div className="w-full">
+        <div className={cn("w-full transition-opacity duration-200", (isPending || loading) && "opacity-60")}>
           {/* Header Giorni */}
           <div className="grid grid-cols-[42px_repeat(5,1fr)] sm:grid-cols-[60px_repeat(5,1fr)] border-b border-border bg-muted/50">
             <div className="p-1 sm:p-2 border-r border-border flex items-center justify-center text-[10px] sm:text-xs font-semibold text-muted-foreground">

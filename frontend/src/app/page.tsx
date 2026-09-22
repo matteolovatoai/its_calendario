@@ -1,76 +1,65 @@
-'use client';
-
-import { useState } from 'react';
-import WeeklyCalendar from '@/components/WeeklyCalendar';
-import LessonFormModal from '@/components/LessonFormModal';
-import { Button } from '@/components/ui/button';
+import { auth } from '@/auth';
+import CalendarContainer from '@/components/CalendarContainer';
+import { getMondayOfRomeWeek, getWeekBoundsUtc, isValidDateStr } from '@/lib/timezone';
 import { Lesson } from '@/types';
-import { signIn } from 'next-auth/react';
-import { useAuth } from '@/context/AuthContext';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import Link from 'next/link';
 
-export default function HomePage() {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+interface PageProps {
+  searchParams: Promise<{ week?: string }>;
+}
 
-  const { isAuthenticated, isAdmin, logout } = useAuth();
+async function getLessons(monday: string, token?: string | null): Promise<Lesson[]> {
+  const apiUrl =
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://127.0.0.1:8000';
 
-  const handleAddLesson = () => {
-    if (!isAdmin) return;
-    setSelectedLesson(null);
-    setModalOpen(true);
+  const { startUtc, endUtc } = getWeekBoundsUtc(monday);
+  const params = new URLSearchParams({
+    start_date: startUtc,
+    end_date: endUtc,
+  });
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
   };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
-  const handleEditLesson = (lesson: Lesson) => {
-    if (!isAdmin) return;
-    setSelectedLesson(lesson);
-    setModalOpen(true);
-  };
+  try {
+    const res = await fetch(`${apiUrl}/api/lessons?${params.toString()}`, {
+      headers,
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return (data as Lesson[]) || [];
+    }
+  } catch (err) {
+    console.warn('[Server Lessons Fetch] Impossibile contattare il backend:', err);
+  }
+  return [];
+}
 
-  const handleSuccess = () => {
-    setRefreshTrigger((prev) => prev + 1);
-  };
+export default async function HomePage(props: PageProps) {
+  const searchParams = await props.searchParams;
+  const weekParam = searchParams?.week;
+
+  const monday = isValidDateStr(weekParam)
+    ? getMondayOfRomeWeek(weekParam)
+    : getMondayOfRomeWeek();
+
+  const session = await auth();
+  const token = (session as unknown as { accessToken?: string })?.accessToken || null;
+
+  const initialLessons = await getLessons(monday, token);
 
   return (
     <main className="p-2 sm:p-8 max-w-7xl mx-auto w-full flex-1 flex flex-col h-screen">
-      <div className="flex flex-row gap-2 justify-between items-center mb-4 sm:mb-8 shrink-0">
-        <h1 className="text-xl sm:text-3xl font-bold truncate">Calendario</h1>
-
-        <div className="flex gap-2 sm:gap-4 items-center">
-          <ThemeToggle />
-          {isAuthenticated ? (
-            <>
-              {isAdmin && <Button onClick={handleAddLesson}>+ Nuova Lezione</Button>}
-              <Button variant="outline" onClick={logout}>
-                Logout
-              </Button>
-            </>
-          ) : (
-            <Button onClick={() => signIn('google')}>Accedi</Button>
-          )}
-        </div>
-      </div>
-
-      <WeeklyCalendar onLessonEdit={handleEditLesson} refreshTrigger={refreshTrigger} />
-
-      <footer className="mt-2 py-1 text-center text-xs text-muted-foreground shrink-0 flex justify-center items-center gap-3">
-        <span>ITS Digital Academy</span>
-        <span>•</span>
-        <Link href="/privacy" className="hover:underline hover:text-foreground transition-colors">
-          Privacy Policy
-        </Link>
-      </footer>
-
-      {isAdmin && (
-        <LessonFormModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          lesson={selectedLesson}
-          onSuccess={handleSuccess}
-        />
-      )}
+      <CalendarContainer
+        initialMonday={monday}
+        initialLessons={initialLessons}
+      />
     </main>
   );
 }

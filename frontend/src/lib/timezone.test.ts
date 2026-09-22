@@ -10,6 +10,7 @@ import {
   formatRomeMonthYear,
   romeToUtcIso,
   addDaysToDateStr,
+  isValidDateStr,
   getMondayOfRomeWeek,
   getWeekBoundsUtc,
   getLessonGridPosition,
@@ -171,5 +172,17 @@ test('getMondayOfRomeWeek maps any picked day to that week Monday for DatePicker
   assert.strictEqual(getMondayOfRomeWeek('2026-09-27'), '2026-09-21');
   // Pick Sunday across month boundary (2026-11-01 is Sunday) -> Monday 2026-10-26
   assert.strictEqual(getMondayOfRomeWeek('2026-11-01'), '2026-10-26');
+});
+
+test('isValidDateStr validates correctly', () => {
+  assert.strictEqual(isValidDateStr('2026-09-22'), true);
+  assert.strictEqual(isValidDateStr('2026-02-28'), true);
+  assert.strictEqual(isValidDateStr('2026-02-29'), false); // 2026 is not a leap year
+  assert.strictEqual(isValidDateStr('invalid-date'), false);
+  assert.strictEqual(isValidDateStr(''), false);
+  assert.strictEqual(isValidDateStr(null), false);
+  assert.strictEqual(isValidDateStr(undefined), false);
+  assert.strictEqual(isValidDateStr('2026-13-01'), false);
+  assert.strictEqual(isValidDateStr('2026-09-32'), false);
 });
 

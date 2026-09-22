@@ -137,6 +137,21 @@ export function addDaysToDateStr(dateStr: string, days: number): string {
 }
 
 /**
+ * Validates whether a string is a valid "YYYY-MM-DD" calendar date.
+ */
+export function isValidDateStr(dateStr?: string | null): boolean {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
+}
+
+/**
  * Returns the "YYYY-MM-DD" string of the Monday of the week containing the given date in Rome.
  */
 export function getMondayOfRomeWeek(date: Date | string | number = new Date()): string {
