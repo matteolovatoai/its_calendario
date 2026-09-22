@@ -12,6 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, User } from 'lucide-react';
 
+import { formatRomeDate, formatRomeTimeRange } from '@/lib/timezone';
+
 interface LessonDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,13 +27,8 @@ export default function LessonDetailModal({
 }: LessonDetailModalProps) {
   if (!lesson) return null;
 
-  const start = new Date(lesson.start_time);
-  const end = new Date(lesson.end_time);
-
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  const timeRange = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(end.getHours())}:${pad(end.getMinutes())}`;
-
-  const dateStr = start.toLocaleDateString('it-IT', {
+  const timeRange = formatRomeTimeRange(lesson.start_time, lesson.end_time);
+  const dateStr = formatRomeDate(lesson.start_time, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

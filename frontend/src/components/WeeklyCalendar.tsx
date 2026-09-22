@@ -6,6 +6,16 @@ import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import LessonDetailModal from '@/components/LessonDetailModal';
+import {
+  getMondayOfRomeWeek,
+  addDaysToDateStr,
+  getWeekBoundsUtc,
+  getRomeTodayString,
+  getRomeParts,
+  formatRomeMonthYear,
+  formatRomeTimeRange,
+  getLessonGridPosition,
+} from '@/lib/timezone';
 
 const START_HOUR = 8;
 const END_HOUR = 18;
@@ -13,15 +23,6 @@ const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_
 
 const DAY_NAMES = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
 const DAY_INITIALS = ['L', 'M', 'M', 'G', 'V'];
-
-function getMonday(d: Date) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  date.setDate(diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
 
 export default function WeeklyCalendar({
   onLessonEdit,
@@ -34,24 +35,20 @@ export default function WeeklyCalendar({
   const [loading, setLoading] = useState(true);
   const [selectedDetailLesson, setSelectedDetailLesson] = useState<Lesson | null>(null);
   const { isAdmin, token, isAuthenticated } = useAuth();
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
+  const [currentMonday, setCurrentMonday] = useState<string>(() => getMondayOfRomeWeek());
 
-  const currentWeekEnd = new Date(currentWeekStart);
-  currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
-  currentWeekEnd.setHours(23, 59, 59, 999);
+  const { startUtc, endUtc } = getWeekBoundsUtc(currentMonday);
 
   useEffect(() => {
     let isMounted = true;
-    const weekEnd = new Date(currentWeekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    weekEnd.setHours(23, 59, 59, 999);
+    const { startUtc: queryStart, endUtc: queryEnd } = getWeekBoundsUtc(currentMonday);
 
     const fetchLessons = async () => {
       try {
         setLoading(true);
         const params = new URLSearchParams({
-          start_date: currentWeekStart.toISOString(),
-          end_date: weekEnd.toISOString(),
+          start_date: queryStart,
+          end_date: queryEnd,
         });
         const data = await fetchApi(`/api/lessons?${params.toString()}`);
         if (isMounted) {
@@ -71,56 +68,38 @@ export default function WeeklyCalendar({
     return () => {
       isMounted = false;
     };
-  }, [currentWeekStart, refreshTrigger, token, isAuthenticated]);
+  }, [currentMonday, refreshTrigger, token, isAuthenticated]);
+
+  const weekStartMs = new Date(startUtc).getTime();
+  const weekEndMs = new Date(endUtc).getTime();
 
   const weekLessons = lessons.filter((l) => {
-    const d = new Date(l.start_time);
-    return d >= currentWeekStart && d <= currentWeekEnd;
+    const startMs = new Date(l.start_time).getTime();
+    const endMs = new Date(l.end_time).getTime();
+    return startMs <= weekEndMs && endMs >= weekStartMs;
   });
 
   const goPrevWeek = () => {
-    const newDate = new Date(currentWeekStart);
-    newDate.setDate(newDate.getDate() - 7);
-    setCurrentWeekStart(newDate);
+    setCurrentMonday((prev) => addDaysToDateStr(prev, -7));
   };
 
   const goNextWeek = () => {
-    const newDate = new Date(currentWeekStart);
-    newDate.setDate(newDate.getDate() + 7);
-    setCurrentWeekStart(newDate);
+    setCurrentMonday((prev) => addDaysToDateStr(prev, 7));
   };
 
   const goToday = () => {
-    setCurrentWeekStart(getMonday(new Date()));
+    setCurrentMonday(getMondayOfRomeWeek());
   };
 
+  const todayRomeStr = getRomeTodayString();
   const daysOfWeek = Array.from({ length: 5 }).map((_, i) => {
-    const d = new Date(currentWeekStart);
-    d.setDate(d.getDate() + i);
-    return d;
+    const dateStr = addDaysToDateStr(currentMonday, i);
+    const dayNumber = getRomeParts(dateStr).day;
+    const isToday = dateStr === todayRomeStr;
+    return { dateStr, dayNumber, isToday };
   });
 
-  const monthName = currentWeekStart.toLocaleDateString('it-IT', {
-    month: 'long',
-    year: 'numeric',
-  });
-
-  const getGridPosition = (lesson: Lesson) => {
-    const start = new Date(lesson.start_time);
-    const end = new Date(lesson.end_time);
-
-    const dayOfWeek = start.getDay();
-    if (dayOfWeek < 1 || dayOfWeek > 5) return null;
-
-    const startMinutes = (start.getHours() - START_HOUR) * 60 + start.getMinutes();
-    const endMinutes = (end.getHours() - START_HOUR) * 60 + end.getMinutes();
-
-    const gridRowStart = startMinutes + 1;
-    const gridRowEnd = endMinutes + 1;
-    const gridColumn = dayOfWeek;
-
-    return { gridRowStart, gridRowEnd, gridColumn };
-  };
+  const monthName = formatRomeMonthYear(currentMonday);
 
   if (loading) {
     return (
@@ -157,24 +136,21 @@ export default function WeeklyCalendar({
             <div className="p-1 sm:p-2 border-r border-border flex items-center justify-center text-[10px] sm:text-xs font-semibold text-muted-foreground">
               Ora
             </div>
-            {daysOfWeek.map((date, i) => {
-              const isToday = date.toDateString() === new Date().toDateString();
-              return (
-                <div
-                  key={i}
-                  className={`p-1.5 sm:p-2 text-center border-r border-border last:border-r-0 flex flex-col items-center justify-center ${
-                    isToday ? 'bg-primary/5 dark:bg-primary/10' : ''
-                  }`}
-                >
-                  <span className={`text-xs sm:text-sm font-semibold hidden sm:block ${isToday ? 'text-primary' : 'text-foreground'}`}>
-                    {DAY_NAMES[i]} {date.getDate()}
-                  </span>
-                  <span className={`text-xs sm:text-sm font-semibold sm:hidden ${isToday ? 'text-primary' : 'text-foreground'}`}>
-                    {DAY_INITIALS[i]} {date.getDate()}
-                  </span>
-                </div>
-              );
-            })}
+            {daysOfWeek.map((day, i) => (
+              <div
+                key={day.dateStr}
+                className={`p-1.5 sm:p-2 text-center border-r border-border last:border-r-0 flex flex-col items-center justify-center ${
+                  day.isToday ? 'bg-primary/5 dark:bg-primary/10' : ''
+                }`}
+              >
+                <span className={`text-xs sm:text-sm font-semibold hidden sm:block ${day.isToday ? 'text-primary' : 'text-foreground'}`}>
+                  {DAY_NAMES[i]} {day.dayNumber}
+                </span>
+                <span className={`text-xs sm:text-sm font-semibold sm:hidden ${day.isToday ? 'text-primary' : 'text-foreground'}`}>
+                  {DAY_INITIALS[i]} {day.dayNumber}
+                </span>
+              </div>
+            ))}
           </div>
 
           {/* Body Calendario */}
@@ -232,13 +208,10 @@ export default function WeeklyCalendar({
 
               {/* Blocchi Lezioni */}
               {weekLessons.map((lesson) => {
-                const pos = getGridPosition(lesson);
+                const pos = getLessonGridPosition(lesson, START_HOUR);
                 if (!pos) return null;
 
-                const start = new Date(lesson.start_time);
-                const end = new Date(lesson.end_time);
-                const pad = (n: number) => n.toString().padStart(2, '0');
-                const timeRange = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(end.getHours())}:${pad(end.getMinutes())}`;
+                const timeRange = formatRomeTimeRange(lesson.start_time, lesson.end_time);
 
                 return (
                   <div

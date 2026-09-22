@@ -11,6 +11,12 @@ import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Lesson, Entity } from '@/types';
 import { fetchApi } from '@/lib/api';
+import {
+  getRomeDateString,
+  getRomeTodayString,
+  formatRomeTime,
+  romeToUtcIso,
+} from '@/lib/timezone';
 
 function CreatableCombobox({
   items,
@@ -119,25 +125,21 @@ interface LessonFormModalProps {
 }
 
 function getInitialFormData(lesson?: Lesson | null) {
-  const pad = (n: number) => n.toString().padStart(2, '0');
   if (lesson) {
-    const start = new Date(lesson.start_time);
-    const end = new Date(lesson.end_time);
     return {
       subject_id: lesson.subject.id,
       teacher_id: lesson.teacher?.id || '',
       room_id: lesson.room.id,
-      date: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
-      start_time: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
-      end_time: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+      date: getRomeDateString(lesson.start_time),
+      start_time: formatRomeTime(lesson.start_time),
+      end_time: formatRomeTime(lesson.end_time),
     };
   }
-  const today = new Date();
   return {
     subject_id: '',
     teacher_id: '',
     room_id: '',
-    date: `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`,
+    date: getRomeTodayString(),
     start_time: '09:00',
     end_time: '13:00',
   };
@@ -230,15 +232,12 @@ function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFo
     setLoading(true);
 
     try {
-      const startDateTime = new Date(`${formData.date}T${formData.start_time}`);
-      const endDateTime = new Date(`${formData.date}T${formData.end_time}`);
-
       const payload = {
         subject_id: formData.subject_id,
         teacher_id: formData.teacher_id,
         room_id: formData.room_id,
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
+        start_time: romeToUtcIso(formData.date, formData.start_time),
+        end_time: romeToUtcIso(formData.date, formData.end_time),
       };
 
       if (lesson?.id) {
