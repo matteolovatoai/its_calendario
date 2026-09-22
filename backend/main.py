@@ -1,6 +1,6 @@
+import uuid
 from datetime import datetime, timezone
 from typing import Annotated
-import uuid
 
 import models
 import schemas
@@ -25,7 +25,11 @@ from sqlalchemy.orm import Session
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="ITS Calendario API")
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(RateLimitExceeded)
+def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return _rate_limit_exceeded_handler(request, exc)
 
 
 @app.exception_handler(IntegrityError)
