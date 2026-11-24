@@ -10,7 +10,9 @@ export interface Lesson {
   teacher_id: string | null;
   subject_id: string;
   room_id: string;
+  class_id: string;
   teacher: Entity | null;
   subject: Entity;
   room: Entity;
+  school_class: Entity;
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import WeeklyCalendar from '@/components/WeeklyCalendar';
 import LessonFormModal from '@/components/LessonFormModal';
 import { Button } from '@/components/ui/button';
-import { Lesson } from '@/types';
+import { Entity, Lesson } from '@/types';
 import { signIn } from 'next-auth/react';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -14,11 +14,15 @@ import { useRouter } from 'next/navigation';
 interface CalendarContainerProps {
   initialMonday: string;
   initialLessons: Lesson[];
+  classes: Entity[];
+  selectedClassId: string | null;
 }
 
 export default function CalendarContainer({
   initialMonday,
   initialLessons,
+  classes,
+  selectedClassId,
 }: CalendarContainerProps) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
@@ -69,6 +73,8 @@ export default function CalendarContainer({
         initialLessons={initialLessons}
         onLessonEdit={handleEditLesson}
         refreshTrigger={refreshTrigger}
+        classes={classes}
+        selectedClassId={selectedClassId}
       />
 
       <footer className="mt-2 py-1 text-center text-xs text-muted-foreground shrink-0 flex justify-center items-center gap-3">
@@ -84,6 +90,7 @@ export default function CalendarContainer({
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           lesson={selectedLesson}
+          defaultClassId={selectedClassId}
           onSuccess={handleSuccess}
         />
       )}

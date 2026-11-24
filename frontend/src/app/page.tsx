@@ -1,23 +1,42 @@
 import { auth } from '@/auth';
 import CalendarContainer from '@/components/CalendarContainer';
 import { getMondayOfRomeWeek, getWeekBoundsUtc, isValidDateStr } from '@/lib/timezone';
-import { Lesson } from '@/types';
+import { Entity, Lesson } from '@/types';
 
 interface PageProps {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; classe?: string }>;
 }
 
-async function getLessons(monday: string, token?: string | null): Promise<Lesson[]> {
-  const apiUrl =
-    process.env.INTERNAL_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    'http://127.0.0.1:8000';
+const apiUrl =
+  process.env.INTERNAL_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://127.0.0.1:8000';
 
+async function getClasses(): Promise<Entity[]> {
+  try {
+    const res = await fetch(`${apiUrl}/api/classes`, { cache: 'no-store' });
+    if (res.ok) {
+      return ((await res.json()) as Entity[]) || [];
+    }
+  } catch (err) {
+    console.warn('[Server Classes Fetch] Impossibile contattare il backend:', err);
+  }
+  return [];
+}
+
+async function getLessons(
+  monday: string,
+  classId: string | null,
+  token?: string | null
+): Promise<Lesson[]> {
   const { startUtc, endUtc } = getWeekBoundsUtc(monday);
   const params = new URLSearchParams({
     start_date: startUtc,
     end_date: endUtc,
   });
+  if (classId) {
+    params.set('class_id', classId);
+  }
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -44,6 +63,7 @@ async function getLessons(monday: string, token?: string | null): Promise<Lesson
 export default async function HomePage(props: PageProps) {
   const searchParams = await props.searchParams;
   const weekParam = searchParams?.week;
+  const classParam = searchParams?.classe;
 
   const monday = isValidDateStr(weekParam)
     ? getMondayOfRomeWeek(weekParam)
@@ -52,13 +72,22 @@ export default async function HomePage(props: PageProps) {
   const session = await auth();
   const token = (session as unknown as { accessToken?: string })?.accessToken || null;
 
-  const initialLessons = await getLessons(monday, token);
+  const classes = await getClasses();
+  // Classe richiesta nell'URL se esiste, altrimenti la prima in ordine alfabetico
+  const selectedClassId =
+    classes.find((c) => c.id === classParam)?.id ?? classes[0]?.id ?? null;
+
+  // Se le classi non sono disponibili (backend non aggiornato o errore temporaneo)
+  // si ricade sul comportamento precedente: tutte le lezioni della settimana.
+  const initialLessons = await getLessons(monday, selectedClassId, token);
 
   return (
     <main className="p-2 sm:p-8 max-w-7xl mx-auto w-full flex-1 flex flex-col h-screen">
       <CalendarContainer
         initialMonday={monday}
         initialLessons={initialLessons}
+        classes={classes}
+        selectedClassId={selectedClassId}
       />
     </main>
   );
