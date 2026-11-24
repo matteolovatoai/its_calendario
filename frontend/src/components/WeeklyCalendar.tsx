@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import LessonDetailModal from '@/components/LessonDetailModal';
 import DatePickerPopover from '@/components/DatePickerPopover';
 import { cn } from '@/lib/utils';
+import { removeLegacyClassPreference, saveClassPreference } from '@/lib/classPreference';
 import {
   getMondayOfRomeWeek,
   addDaysToDateStr,
@@ -35,25 +36,6 @@ export interface WeeklyCalendarProps {
   refreshTrigger?: number;
   classes?: Entity[];
   selectedClassId?: string | null;
-}
-
-const CLASS_STORAGE_KEY = 'calendario:classe';
-
-// localStorage può non essere disponibile (navigazione privata, cookie bloccati): mai bloccare la pagina.
-function readSavedClassId(): string | null {
-  try {
-    return window.localStorage.getItem(CLASS_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function saveClassId(classId: string) {
-  try {
-    window.localStorage.setItem(CLASS_STORAGE_KEY, classId);
-  } catch {
-    // ignorato: la scelta resta comunque nell'URL
-  }
 }
 
 export function buildCalendarUrl(monday: string, classId?: string | null) {
@@ -154,20 +136,10 @@ export default function WeeklyCalendar({
     return startMs <= weekEndMs && endMs >= weekStartMs;
   });
 
-  // All'apertura senza ?classe= nel link, ripristina l'ultima classe scelta su questo browser.
-  // Un link con ?classe= esplicito ha sempre la precedenza.
-  const restoredClassRef = useRef(false);
+  // La preferenza ora è un cookie letto dal server: elimina la vecchia copia in localStorage.
   useEffect(() => {
-    if (restoredClassRef.current) return;
-    restoredClassRef.current = true;
-    if (new URLSearchParams(window.location.search).has('classe')) return;
-    const saved = readSavedClassId();
-    if (saved && saved !== selectedClassId && classes.some((c) => c.id === saved)) {
-      startTransition(() => {
-        router.replace(buildCalendarUrl(currentMonday, saved), { scroll: false });
-      });
-    }
-  }, [classes, currentMonday, router, selectedClassId]);
+    removeLegacyClassPreference();
+  }, []);
 
   const navigateToWeek = (targetMonday: string) => {
     setCurrentMonday(targetMonday);
@@ -177,7 +149,7 @@ export default function WeeklyCalendar({
   };
 
   const selectClass = (classId: string) => {
-    saveClassId(classId);
+    saveClassPreference(classId);
     startTransition(() => {
       router.push(buildCalendarUrl(currentMonday, classId), { scroll: false });
     });
