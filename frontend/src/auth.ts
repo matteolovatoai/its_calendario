@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { decodeJwtPayload, isBackendTokenExpired } from "@/lib/backendToken";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -68,15 +69,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (res.ok) {
             const data = await res.json();
             token.accessToken = data.access_token;
-            try {
-              const base64Url = data.access_token.split(".")[1];
-              const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-              const payload = JSON.parse(
-                Buffer.from(base64, "base64").toString("utf-8")
-              );
+            const payload = decodeJwtPayload(data.access_token);
+            if (payload) {
               token.role = payload.role;
-            } catch (e) {
-              console.error("Errore nel decodificare il token backend", e);
+            } else {
+              console.error("Errore nel decodificare il token backend");
             }
           } else {
             console.error(
@@ -88,6 +85,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } catch (error) {
           console.error("Richiesta di scambio token al backend fallita:", error);
         }
+      }
+      // La sessione NextAuth si rinnova da sola, il token del backend no: se è scaduto
+      // chiudiamo la sessione, così l'utente rifà il login invece di trovarsi
+      // "loggato" ma con tutte le chiamate al backend rifiutate (401).
+      if (
+        typeof token.accessToken === "string" &&
+        isBackendTokenExpired(token.accessToken)
+      ) {
+        return null;
       }
       return token;
     },
