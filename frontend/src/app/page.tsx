@@ -1,6 +1,8 @@
+import { cookies } from 'next/headers';
 import { auth } from '@/auth';
 import CalendarContainer from '@/components/CalendarContainer';
 import { getMondayOfRomeWeek, getWeekBoundsUtc, isValidDateStr } from '@/lib/timezone';
+import { CLASS_COOKIE_NAME, pickSelectedClassId } from '@/lib/classPreference';
 import { Entity, Lesson } from '@/types';
 
 interface PageProps {
@@ -73,9 +75,13 @@ export default async function HomePage(props: PageProps) {
   const token = (session as unknown as { accessToken?: string })?.accessToken || null;
 
   const classes = await getClasses();
-  // Classe richiesta nell'URL se esiste, altrimenti la prima in ordine alfabetico
-  const selectedClassId =
-    classes.find((c) => c.id === classParam)?.id ?? classes[0]?.id ?? null;
+  const savedClassId = (await cookies()).get(CLASS_COOKIE_NAME)?.value ?? null;
+  // Link (?classe=) > classe salvata nel cookie > prima in ordine alfabetico
+  const selectedClassId = pickSelectedClassId(
+    classes.map((c) => c.id),
+    classParam,
+    savedClassId
+  );
 
   // Se le classi non sono disponibili (backend non aggiornato o errore temporaneo)
   // si ricade sul comportamento precedente: tutte le lezioni della settimana.
