@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lesson } from '@/types';
+import { Entity, Lesson } from '@/types';
 import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,14 @@ export interface WeeklyCalendarProps {
   initialMonday?: string;
   onLessonEdit?: (lesson: Lesson) => void;
   refreshTrigger?: number;
+  classes?: Entity[];
+  selectedClassId?: string | null;
+}
+
+export function buildCalendarUrl(monday: string, classId?: string | null) {
+  const params = new URLSearchParams({ week: monday });
+  if (classId) params.set('classe', classId);
+  return `/?${params.toString()}`;
 }
 
 export default function WeeklyCalendar({
@@ -40,6 +48,8 @@ export default function WeeklyCalendar({
   initialMonday,
   onLessonEdit,
   refreshTrigger = 0,
+  classes = [],
+  selectedClassId = null,
 }: WeeklyCalendarProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -92,6 +102,9 @@ export default function WeeklyCalendar({
           start_date: queryStart,
           end_date: queryEnd,
         });
+        if (selectedClassId) {
+          params.set('class_id', selectedClassId);
+        }
         const data = await fetchApi(`/api/lessons?${params.toString()}`);
         if (isMounted) {
           setLessons(data || []);
@@ -110,7 +123,7 @@ export default function WeeklyCalendar({
     return () => {
       isMounted = false;
     };
-  }, [currentMonday, refreshTrigger, token, isAuthenticated, initialLessons]);
+  }, [currentMonday, selectedClassId, refreshTrigger, token, isAuthenticated, initialLessons]);
 
   const { startUtc, endUtc } = getWeekBoundsUtc(currentMonday);
   const weekStartMs = new Date(startUtc).getTime();
@@ -125,7 +138,13 @@ export default function WeeklyCalendar({
   const navigateToWeek = (targetMonday: string) => {
     setCurrentMonday(targetMonday);
     startTransition(() => {
-      router.push(`/?week=${targetMonday}`, { scroll: false });
+      router.push(buildCalendarUrl(targetMonday, selectedClassId), { scroll: false });
+    });
+  };
+
+  const selectClass = (classId: string) => {
+    startTransition(() => {
+      router.push(buildCalendarUrl(currentMonday, classId), { scroll: false });
     });
   };
 
@@ -161,7 +180,23 @@ export default function WeeklyCalendar({
             &larr; <span className="hidden sm:inline ml-1">Precedente</span>
           </Button>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            {classes.length > 0 && (
+              <select
+                aria-label="Classe"
+                title="Classe"
+                value={selectedClassId ?? ''}
+                onChange={(e) => selectClass(e.target.value)}
+                disabled={isPending}
+                className="h-8 max-w-[9rem] sm:max-w-[14rem] truncate rounded-md border border-border bg-background px-2 text-xs sm:text-sm font-medium shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              >
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <DatePickerPopover
               currentMonday={currentMonday}
               onSelectMonday={navigateToWeek}

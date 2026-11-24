@@ -2,6 +2,18 @@ import { getSession } from 'next-auth/react';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+/** Errore HTTP dell'API; `detail` è il messaggio leggibile restituito da FastAPI, se presente. */
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    statusText: string,
+    public detail: string | null
+  ) {
+    super(`API error: ${status} ${statusText}`);
+    this.name = 'ApiError';
+  }
+}
+
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   let token: string | null = null;
 
@@ -28,7 +40,14 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    let detail: string | null = null;
+    try {
+      const body = await response.json();
+      if (typeof body?.detail === 'string') detail = body.detail;
+    } catch {
+      // corpo non JSON: nessun dettaglio
+    }
+    throw new ApiError(response.status, response.statusText, detail);
   }
 
   const text = await response.text();

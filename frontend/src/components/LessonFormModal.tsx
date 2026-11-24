@@ -10,7 +10,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Lesson, Entity } from '@/types';
-import { fetchApi } from '@/lib/api';
+import { ApiError, fetchApi } from '@/lib/api';
 import {
   getRomeDateString,
   getRomeTodayString,
@@ -121,12 +121,14 @@ interface LessonFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   lesson?: Lesson | null;
+  defaultClassId?: string | null;
   onSuccess: () => void;
 }
 
-function getInitialFormData(lesson?: Lesson | null) {
+function getInitialFormData(lesson?: Lesson | null, defaultClassId?: string | null) {
   if (lesson) {
     return {
+      class_id: lesson.class_id,
       subject_id: lesson.subject.id,
       teacher_id: lesson.teacher?.id || '',
       room_id: lesson.room.id,
@@ -136,6 +138,7 @@ function getInitialFormData(lesson?: Lesson | null) {
     };
   }
   return {
+    class_id: defaultClassId || '',
     subject_id: '',
     teacher_id: '',
     room_id: '',
@@ -145,25 +148,31 @@ function getInitialFormData(lesson?: Lesson | null) {
   };
 }
 
-function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFormModalProps) {
-  const [formData, setFormData] = useState(() => getInitialFormData(lesson));
+const ENTITY_ENDPOINTS = ['/api/teachers', '/api/subjects', '/api/rooms', '/api/classes'];
+
+function LessonFormModalContent({
+  isOpen,
+  onClose,
+  lesson,
+  defaultClassId,
+  onSuccess,
+}: LessonFormModalProps) {
+  const [formData, setFormData] = useState(() => getInitialFormData(lesson, defaultClassId));
   const [loading, setLoading] = useState(false);
   const [teachers, setTeachers] = useState<Entity[]>([]);
   const [subjects, setSubjects] = useState<Entity[]>([]);
   const [rooms, setRooms] = useState<Entity[]>([]);
+  const [classes, setClasses] = useState<Entity[]>([]);
 
   useEffect(() => {
     let isMounted = true;
-    Promise.all([
-      fetchApi('/api/teachers'),
-      fetchApi('/api/subjects'),
-      fetchApi('/api/rooms'),
-    ])
-      .then(([t, s, r]) => {
+    Promise.all(ENTITY_ENDPOINTS.map((e) => fetchApi(e)))
+      .then(([t, s, r, c]) => {
         if (isMounted) {
           setTeachers(t || []);
           setSubjects(s || []);
           setRooms(r || []);
+          setClasses(c || []);
         }
       })
       .catch((err) => {
@@ -191,24 +200,25 @@ function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFo
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateEntity = async (type: 'teachers' | 'subjects' | 'rooms', name: string) => {
+  const handleCreateEntity = async (
+    type: 'teachers' | 'subjects' | 'rooms' | 'classes',
+    name: string
+  ) => {
     try {
       const created = await fetchApi(`/api/${type}`, {
         method: 'POST',
         body: JSON.stringify({ name }),
       });
       if (created) {
-        const [t, s, r] = await Promise.all([
-          fetchApi('/api/teachers'),
-          fetchApi('/api/subjects'),
-          fetchApi('/api/rooms'),
-        ]);
+        const [t, s, r, c] = await Promise.all(ENTITY_ENDPOINTS.map((e) => fetchApi(e)));
         setTeachers(t || []);
         setSubjects(s || []);
         setRooms(r || []);
+        setClasses(c || []);
         if (type === 'teachers') setFormData((prev) => ({ ...prev, teacher_id: created.id }));
         if (type === 'subjects') setFormData((prev) => ({ ...prev, subject_id: created.id }));
         if (type === 'rooms') setFormData((prev) => ({ ...prev, room_id: created.id }));
+        if (type === 'classes') setFormData((prev) => ({ ...prev, class_id: created.id }));
       }
     } catch {
       alert('Errore nella creazione');
@@ -218,6 +228,7 @@ function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
+      !formData.class_id ||
       !formData.subject_id ||
       !formData.teacher_id ||
       !formData.room_id ||
@@ -233,6 +244,7 @@ function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFo
 
     try {
       const payload = {
+        class_id: formData.class_id,
         subject_id: formData.subject_id,
         teacher_id: formData.teacher_id,
         room_id: formData.room_id,
@@ -256,7 +268,12 @@ function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFo
       onClose();
     } catch (error) {
       console.error('Failed to save lesson', error);
-      alert('Errore durante il salvataggio');
+      // Mostra il motivo del blocco (es. classe, aula o docente già impegnati)
+      alert(
+        error instanceof ApiError && error.detail
+          ? error.detail
+          : 'Errore durante il salvataggio'
+      );
     } finally {
       setLoading(false);
     }
@@ -286,6 +303,18 @@ function LessonFormModalContent({ isOpen, onClose, lesson, onSuccess }: LessonFo
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Classe</Label>
+            <CreatableCombobox
+              items={classes}
+              value={formData.class_id || ''}
+              onSelect={(val) => setFormData({ ...formData, class_id: val })}
+              onCreate={(name) => handleCreateEntity('classes', name)}
+              placeholder="Seleziona classe o scrivi per creare..."
+              emptyMessage="Nessuna classe trovata."
+            />
+          </div>
+
           <div className="space-y-2">
             <Label>Docente</Label>
             <CreatableCombobox
