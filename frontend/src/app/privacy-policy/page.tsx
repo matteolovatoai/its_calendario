@@ -89,16 +89,28 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-xl font-semibold">4. Cookie e Tecnologie di Tracciamento</h2>
           <p className="text-muted-foreground leading-relaxed">
             L&apos;applicazione <strong>non utilizza cookie di profilazione o di terze parti a fini pubblicitari</strong>. 
-            Vengono utilizzati esclusivamente cookie tecnici necessari a mantenere attiva la sessione dell&apos;utente autenticato durante la navigazione. 
-            Tali cookie rimangono attivi per una durata massima di 60 giorni dall&apos;ultimo accesso o fino al logout esplicito da parte dell&apos;utente.
+            Vengono utilizzati esclusivamente strumenti tecnici necessari al funzionamento del servizio:
           </p>
+          <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+            <li>
+              <strong>Cookie di sessione (solo utenti autenticati):</strong> mantengono attivo l&apos;accesso durante la navigazione.
+              La sessione dura al massimo 60 giorni dal login, dopodiché è necessario accedere di nuovo; termina comunque al logout esplicito.
+            </li>
+            <li>
+              <strong>Cookie di preferenza della classe (tutti gli utenti, anche non autenticati):</strong> il cookie tecnico
+              <code>calendario_classe</code> memorizza l&apos;ultima classe selezionata nel calendario, per mostrarla già selezionata
+              alla visita successiva. Contiene solo l&apos;identificativo della classe, non contiene dati personali, non viene usato
+              per profilazione e scade dopo 1 anno (o prima, se l&apos;utente cancella i cookie del sito dal browser).
+            </li>
+          </ul>
         </section>
 
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">5. Conservazione dei Dati</h2>
           <p className="text-muted-foreground leading-relaxed">
             I dati di autorizzazione (email per l&apos;elenco degli amministratori) sono conservati esclusivamente per la durata del servizio.
-            I token di sessione hanno una durata massima di 60 giorni, rinnovabili durante l&apos;utilizzo attivo, e vengono revocati al momento del logout. Non vengono conservati storici di navigazione personale.
+            I token di sessione hanno una durata massima di 60 giorni dal login. Il logout chiude la sessione nel browser; il token di accesso
+            resta comunque tecnicamente valido fino alla sua scadenza naturale (massimo 60 giorni dal login). Non vengono conservati storici di navigazione personale.
           </p>
         </section>
 
