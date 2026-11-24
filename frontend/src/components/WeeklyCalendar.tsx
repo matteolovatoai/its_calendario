@@ -37,6 +37,25 @@ export interface WeeklyCalendarProps {
   selectedClassId?: string | null;
 }
 
+const CLASS_STORAGE_KEY = 'calendario:classe';
+
+// localStorage può non essere disponibile (navigazione privata, cookie bloccati): mai bloccare la pagina.
+function readSavedClassId(): string | null {
+  try {
+    return window.localStorage.getItem(CLASS_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveClassId(classId: string) {
+  try {
+    window.localStorage.setItem(CLASS_STORAGE_KEY, classId);
+  } catch {
+    // ignorato: la scelta resta comunque nell'URL
+  }
+}
+
 export function buildCalendarUrl(monday: string, classId?: string | null) {
   const params = new URLSearchParams({ week: monday });
   if (classId) params.set('classe', classId);
@@ -135,6 +154,21 @@ export default function WeeklyCalendar({
     return startMs <= weekEndMs && endMs >= weekStartMs;
   });
 
+  // All'apertura senza ?classe= nel link, ripristina l'ultima classe scelta su questo browser.
+  // Un link con ?classe= esplicito ha sempre la precedenza.
+  const restoredClassRef = useRef(false);
+  useEffect(() => {
+    if (restoredClassRef.current) return;
+    restoredClassRef.current = true;
+    if (new URLSearchParams(window.location.search).has('classe')) return;
+    const saved = readSavedClassId();
+    if (saved && saved !== selectedClassId && classes.some((c) => c.id === saved)) {
+      startTransition(() => {
+        router.replace(buildCalendarUrl(currentMonday, saved), { scroll: false });
+      });
+    }
+  }, [classes, currentMonday, router, selectedClassId]);
+
   const navigateToWeek = (targetMonday: string) => {
     setCurrentMonday(targetMonday);
     startTransition(() => {
@@ -143,6 +177,7 @@ export default function WeeklyCalendar({
   };
 
   const selectClass = (classId: string) => {
+    saveClassId(classId);
     startTransition(() => {
       router.push(buildCalendarUrl(currentMonday, classId), { scroll: false });
     });
