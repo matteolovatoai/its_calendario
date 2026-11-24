@@ -37,6 +37,7 @@ class LessonBase(BaseModel):
     teacher_id: UUID
     subject_id: UUID
     room_id: UUID
+    class_id: UUID
 
 
 class LessonCreate(LessonBase):
@@ -70,6 +71,7 @@ class LessonResponse(LessonBase):
     teacher: EntityResponse | None = None
     subject: EntityResponse
     room: EntityResponse
+    school_class: EntityResponse
 
     model_config = ConfigDict(from_attributes=True)
 

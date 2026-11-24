@@ -37,6 +37,12 @@ class Room(Base):
     name = Column(String, nullable=False, unique=True)
 
 
+class SchoolClass(Base):
+    __tablename__ = "school_classes"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    name = Column(String, nullable=False, unique=True)
+
+
 class Lesson(Base):
     __tablename__ = "lessons"
 
@@ -59,7 +65,14 @@ class Lesson(Base):
         ForeignKey("rooms.id", ondelete="RESTRICT"),
         nullable=False,
     )
+    class_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("school_classes.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
 
     teacher = relationship("Teacher")
+    school_class = relationship("SchoolClass")
     subject = relationship("Subject")
     room = relationship("Room")
