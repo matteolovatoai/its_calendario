@@ -245,7 +245,81 @@ def delete_room(
         )
 
 
+@app.get("/api/classes", response_model=list[schemas.EntityResponse])
+def get_classes(db: Annotated[Session, Depends(get_db)]):
+    """Elenco classi (pubblico: serve anche ai visitatori anonimi per scegliere la classe)."""
+    return db.query(models.SchoolClass).order_by(models.SchoolClass.name.asc()).all()
+
+
+@app.post(
+    "/api/classes",
+    response_model=schemas.EntityResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_class(
+    school_class: schemas.EntityCreate,
+    current_admin: Annotated[dict, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    db_class = models.SchoolClass(**school_class.model_dump())
+    db.add(db_class)
+    db.commit()
+    db.refresh(db_class)
+    return db_class
+
+
+@app.delete("/api/classes/{class_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_class(
+    class_id: uuid.UUID,
+    current_admin: Annotated[dict, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    school_class = (
+        db.query(models.SchoolClass).filter(models.SchoolClass.id == class_id).first()
+    )
+    if not school_class:
+        raise HTTPException(status_code=404, detail="Classe non trovata")
+    try:
+        db.delete(school_class)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Impossibile eliminare la classe: è associata a una o più lezioni.",
+        )
+
+
 # --- CRUD Lezioni ---
+
+
+def find_lesson_conflict(
+    db: Session,
+    start_time: datetime,
+    end_time: datetime,
+    class_id: uuid.UUID,
+    room_id: uuid.UUID,
+    teacher_id: uuid.UUID,
+    exclude_id: uuid.UUID | None = None,
+) -> str | None:
+    """Restituisce un messaggio se la classe, l'aula o il docente sono già impegnati
+    in un intervallo che si sovrappone; altrimenti None."""
+    query = db.query(models.Lesson).filter(
+        models.Lesson.start_time < end_time,
+        models.Lesson.end_time > start_time,
+    )
+    if exclude_id is not None:
+        query = query.filter(models.Lesson.id != exclude_id)
+
+    checks = [
+        (models.Lesson.class_id == class_id, "La classe ha già una lezione in questo orario."),
+        (models.Lesson.room_id == room_id, "L'aula è già occupata in questo orario."),
+        (models.Lesson.teacher_id == teacher_id, "Il docente è già impegnato in questo orario."),
+    ]
+    for condition, message in checks:
+        if query.filter(condition).first():
+            return message
+    return None
 
 
 @app.get("/api/lessons", response_model=list[schemas.LessonResponse])
@@ -255,9 +329,11 @@ def get_lessons(
     start_date: datetime,
     end_date: datetime,
     db: Annotated[Session, Depends(get_db)],
+    class_id: uuid.UUID | None = None,
     current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
 ):
-    """Recupera le lezioni nell'intervallo specificato. Oscura il docente per i non loggati (GDPR)."""
+    """Recupera le lezioni nell'intervallo specificato, opzionalmente di una sola classe.
+    Oscura il docente per i non loggati (GDPR)."""
     if start_date.tzinfo is None:
         start_date = start_date.replace(tzinfo=timezone.utc)
     if end_date.tzinfo is None:
@@ -269,15 +345,13 @@ def get_lessons(
             detail="start_date non può essere successiva a end_date.",
         )
 
-    lessons = (
-        db.query(models.Lesson)
-        .filter(
-            models.Lesson.start_time <= end_date,
-            models.Lesson.end_time >= start_date,
-        )
-        .order_by(models.Lesson.start_time.asc())
-        .all()
+    query = db.query(models.Lesson).filter(
+        models.Lesson.start_time <= end_date,
+        models.Lesson.end_time >= start_date,
     )
+    if class_id is not None:
+        query = query.filter(models.Lesson.class_id == class_id)
+    lessons = query.order_by(models.Lesson.start_time.asc()).all()
 
     response_lessons = []
     for lesson in lessons:
@@ -323,21 +397,16 @@ def create_lesson(
 ):
     """Crea una nuova lezione (Solo Segreteria)"""
 
-    # Controllo sovrapposizione
-    overlapping = (
-        db.query(models.Lesson)
-        .filter(
-            models.Lesson.start_time < lesson.end_time,
-            models.Lesson.end_time > lesson.start_time,
-        )
-        .first()
+    conflict = find_lesson_conflict(
+        db,
+        lesson.start_time,
+        lesson.end_time,
+        lesson.class_id,
+        lesson.room_id,
+        lesson.teacher_id,
     )
-
-    if overlapping:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La lezione si sovrappone a una lezione esistente in questo orario.",
-        )
+    if conflict:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=conflict)
 
     db_lesson = models.Lesson(**lesson.model_dump())
     db.add(db_lesson)
@@ -360,25 +429,17 @@ def update_lesson(
 
     update_data = lesson_update.model_dump(exclude_unset=True)
 
-    new_start = update_data.get("start_time", db_lesson.start_time)
-    new_end = update_data.get("end_time", db_lesson.end_time)
-
-    # Controllo sovrapposizione (escludendo la lezione stessa)
-    overlapping = (
-        db.query(models.Lesson)
-        .filter(
-            models.Lesson.id != lesson_id,
-            models.Lesson.start_time < new_end,
-            models.Lesson.end_time > new_start,
-        )
-        .first()
+    conflict = find_lesson_conflict(
+        db,
+        update_data.get("start_time", db_lesson.start_time),
+        update_data.get("end_time", db_lesson.end_time),
+        update_data.get("class_id", db_lesson.class_id),
+        update_data.get("room_id", db_lesson.room_id),
+        update_data.get("teacher_id", db_lesson.teacher_id),
+        exclude_id=lesson_id,
     )
-
-    if overlapping:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La modifica causa una sovrapposizione con un'altra lezione esistente.",
-        )
+    if conflict:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=conflict)
 
     for key, value in update_data.items():
         setattr(db_lesson, key, value)

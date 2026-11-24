@@ -76,6 +76,10 @@ def test_admin_can_create_anagrafiche():
     assert res_room.status_code == 201
     test_data["room_id"] = res_room.json()["id"]
 
+    res_class = client.post("/api/classes", json={"name": "LAMBDA"})
+    assert res_class.status_code == 201
+    test_data["class_id"] = res_class.json()["id"]
+
     app.dependency_overrides.pop(get_current_admin, None)
     app.dependency_overrides.pop(get_current_user, None)
 
@@ -97,6 +101,7 @@ def test_admin_can_add_lesson():
             "teacher_id": test_data["teacher_id"],
             "subject_id": test_data["subject_id"],
             "room_id": test_data["room_id"],
+            "class_id": test_data["class_id"],
         },
     )
     assert res.status_code == 201
@@ -313,6 +318,7 @@ def test_get_lessons_filters_by_date_range():
             "teacher_id": test_data["teacher_id"],
             "subject_id": test_data["subject_id"],
             "room_id": test_data["room_id"],
+            "class_id": test_data["class_id"],
         },
     )
     assert res_1.status_code == 201
@@ -327,6 +333,7 @@ def test_get_lessons_filters_by_date_range():
             "teacher_id": test_data["teacher_id"],
             "subject_id": test_data["subject_id"],
             "room_id": test_data["room_id"],
+            "class_id": test_data["class_id"],
         },
     )
     assert res_2.status_code == 201
@@ -343,6 +350,7 @@ def test_get_lessons_filters_by_date_range():
             "teacher_id": test_data["teacher_id"],
             "subject_id": test_data["subject_id"],
             "room_id": test_data["room_id"],
+            "class_id": test_data["class_id"],
         },
     )
     assert res_3.status_code == 201
@@ -475,6 +483,7 @@ def test_graceful_delete_restricted_anagrafiche_in_use():
             "teacher_id": t_id,
             "subject_id": s_id,
             "room_id": r_id,
+            "class_id": test_data["class_id"],
         },
     )
     assert res_lesson.status_code == 201
@@ -528,3 +537,174 @@ def test_anonymous_and_student_cannot_delete_anagrafiche():
 
 
 
+# --- Multi-classe ---
+
+
+def _as_admin():
+    app.dependency_overrides[get_current_admin] = mock_admin
+    app.dependency_overrides[get_current_user] = mock_admin
+
+
+def _reset_overrides():
+    app.dependency_overrides.clear()
+    app.dependency_overrides[get_db] = override_get_db
+
+
+def _lesson_payload(start, end, class_id, room_id, teacher_id):
+    return {
+        "start_time": start.isoformat(),
+        "end_time": end.isoformat(),
+        "teacher_id": teacher_id,
+        "subject_id": test_data["subject_id"],
+        "room_id": room_id,
+        "class_id": class_id,
+    }
+
+
+def test_classes_list_is_public_and_write_is_admin_only():
+    from fastapi import HTTPException
+
+    # Anonimo: può leggere l'elenco (serve al selettore), non può scrivere
+    res = client.get("/api/classes")
+    assert res.status_code == 200
+    assert "Lambda" in [c["name"] for c in res.json()]
+    assert client.post("/api/classes", json={"name": "Beta"}).status_code == 401
+    assert client.delete(f"/api/classes/{uuid.uuid4()}").status_code == 401
+
+    # Studente: 403
+    def fail_admin():
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    app.dependency_overrides[get_current_admin] = fail_admin
+    assert client.post("/api/classes", json={"name": "Beta"}).status_code == 403
+    _reset_overrides()
+
+
+def test_lesson_response_includes_class():
+    res = client.get(f"/api/lessons/{test_data['lesson_id']}")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["class_id"] == test_data["class_id"]
+    assert data["school_class"]["name"] == "Lambda"
+
+
+def test_lesson_requires_class_id():
+    _as_admin()
+    start = datetime.datetime(2027, 6, 1, 9, 0, tzinfo=datetime.timezone.utc)
+    payload = _lesson_payload(
+        start,
+        start + datetime.timedelta(hours=1),
+        test_data["class_id"],
+        test_data["room_id"],
+        test_data["teacher_id"],
+    )
+    del payload["class_id"]
+    assert client.post("/api/lessons", json=payload).status_code == 422
+    _reset_overrides()
+
+
+def test_class_in_use_cannot_be_deleted_unused_can():
+    _as_admin()
+    res = client.delete(f"/api/classes/{test_data['class_id']}")
+    assert res.status_code == 400
+    assert "associata" in res.json()["detail"]
+
+    res_new = client.post("/api/classes", json={"name": "Classe Da Eliminare"})
+    assert res_new.status_code == 201
+    new_id = res_new.json()["id"]
+    assert client.delete(f"/api/classes/{new_id}").status_code == 204
+    assert client.delete(f"/api/classes/{new_id}").status_code == 404
+    _reset_overrides()
+
+
+def test_multi_class_filter_and_conflicts():
+    _as_admin()
+    class_b = client.post("/api/classes", json={"name": "Beta"}).json()["id"]
+    room_b = client.post("/api/rooms", json={"name": "Aula Beta"}).json()["id"]
+    teacher_b = client.post("/api/teachers", json={"name": "Luigi Verdi"}).json()["id"]
+
+    start = datetime.datetime(2027, 3, 1, 9, 0, tzinfo=datetime.timezone.utc)
+    end = start + datetime.timedelta(hours=2)
+    overlap_start = start + datetime.timedelta(hours=1)
+    overlap_end = overlap_start + datetime.timedelta(hours=2)
+
+    a = test_data["class_id"]
+    room_a, teacher_a = test_data["room_id"], test_data["teacher_id"]
+
+    res_a = client.post("/api/lessons", json=_lesson_payload(start, end, a, room_a, teacher_a))
+    assert res_a.status_code == 201
+    lesson_a = res_a.json()["id"]
+
+    # Classi diverse, aula e docente diversi, stesso orario: consentito
+    res_b = client.post(
+        "/api/lessons",
+        json=_lesson_payload(overlap_start, overlap_end, class_b, room_b, teacher_b),
+    )
+    assert res_b.status_code == 201
+    lesson_b = res_b.json()["id"]
+
+    # Stessa classe sovrapposta: bloccato
+    res = client.post(
+        "/api/lessons",
+        json=_lesson_payload(overlap_start, overlap_end, a, room_b, teacher_b),
+    )
+    assert res.status_code == 400
+    assert "classe" in res.json()["detail"].lower()
+
+    # Aula già occupata da un'altra classe: bloccato
+    other_teacher = client.post("/api/teachers", json={"name": "Anna Neri"}).json()["id"]
+    class_c = client.post("/api/classes", json={"name": "Gamma"}).json()["id"]
+    res = client.post(
+        "/api/lessons",
+        json=_lesson_payload(overlap_start, overlap_end, class_c, room_a, other_teacher),
+    )
+    assert res.status_code == 400
+    assert "aula" in res.json()["detail"].lower()
+
+    # Docente già impegnato con un'altra classe: bloccato
+    other_room = client.post("/api/rooms", json={"name": "Aula Gamma"}).json()["id"]
+    res = client.post(
+        "/api/lessons",
+        json=_lesson_payload(overlap_start, overlap_end, class_c, other_room, teacher_a),
+    )
+    assert res.status_code == 400
+    assert "docente" in res.json()["detail"].lower()
+
+    # Lezioni adiacenti (fine == inizio) non sono conflitti
+    res = client.post(
+        "/api/lessons",
+        json=_lesson_payload(end, end + datetime.timedelta(hours=1), a, room_a, teacher_a),
+    )
+    assert res.status_code == 201
+
+    # PUT: modificare la lezione senza cambiarne l'orario non va in conflitto con sé stessa
+    res = client.put(
+        f"/api/lessons/{lesson_a}",
+        json=_lesson_payload(start, end, a, room_a, teacher_a),
+    )
+    assert res.status_code == 200
+
+    # PUT: spostare la lezione B nell'aula di A in orario sovrapposto è bloccato
+    res = client.put(
+        f"/api/lessons/{lesson_b}",
+        json=_lesson_payload(overlap_start, overlap_end, class_b, room_a, teacher_b),
+    )
+    assert res.status_code == 400
+    assert "aula" in res.json()["detail"].lower()
+
+    _reset_overrides()
+
+    # Filtro per classe (anonimo, docente oscurato)
+    params = {
+        "start_date": (start - datetime.timedelta(hours=1)).isoformat(),
+        "end_date": (end + datetime.timedelta(hours=1)).isoformat(),
+    }
+    ids_a = [x["id"] for x in client.get("/api/lessons", params={**params, "class_id": a}).json()]
+    ids_b_resp = client.get("/api/lessons", params={**params, "class_id": class_b}).json()
+    ids_b = [x["id"] for x in ids_b_resp]
+    ids_all = [x["id"] for x in client.get("/api/lessons", params=params).json()]
+
+    assert lesson_a in ids_a and lesson_b not in ids_a
+    assert ids_b == [lesson_b]
+    assert all(x["teacher"] is None for x in ids_b_resp)
+    assert lesson_a in ids_all and lesson_b in ids_all
